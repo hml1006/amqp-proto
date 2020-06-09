@@ -1,6 +1,7 @@
 
 pub mod frame;
 pub mod basic_types;
+pub mod error;
 
 pub use basic_types::{Octet, Short, Long, LongLong, ShortStr, LongStr};
 

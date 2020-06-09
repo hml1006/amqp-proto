@@ -1,4 +1,5 @@
 use bytes::{BytesMut, BufMut};
+use crate::error;
 
 pub type Octet = u8;
 pub type Short = u16;
@@ -17,7 +18,7 @@ impl ShortStr {
     // build a ShortStr from bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<ShortStr, crate::error::Error> {
         if bytes.len() > 0xff as usize {
-            Err(crate::error::Error)
+            Err(crate::error::Error::from(error::ErrorKind::StrTooLong))
         } else {
             let mut content = BytesMut::with_capacity(bytes.len() + SHORT_STR_LEN_SIZE);
             content.put_u8(bytes.len() as u8);
@@ -41,7 +42,7 @@ impl LongStr {
     // build a LongStr from bytes, the length will be convert to big endian
     pub fn from_bytes(bytes: &[u8]) -> Result<LongStr, crate::error::Error> {
         if bytes.len() > 0xffffffff as usize {
-            Err(crate::error::Error)
+            Err(crate::error::Error::from(error::ErrorKind::StrTooLong))
         } else {
             let mut content = BytesMut::with_capacity(bytes.len() + LONG_STR_LEN_SIZE);
             content.put_u32((bytes.len() as u32).to_be());
