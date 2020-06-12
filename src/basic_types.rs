@@ -12,7 +12,7 @@ pub trait AsBytes {
 }
 
 pub struct ShortStr (BytesMut);
-const SHORT_STR_LEN_SIZE: usize = std::mem::size_of::<Octet>();
+
 impl ShortStr {
 
     // build a ShortStr from bytes
@@ -20,7 +20,7 @@ impl ShortStr {
         if bytes.len() > 0xff as usize {
             Err(crate::error::Error::from(error::ErrorKind::StrTooLong))
         } else {
-            let mut content = BytesMut::with_capacity(bytes.len() + SHORT_STR_LEN_SIZE);
+            let mut content = BytesMut::with_capacity(bytes.len() + std::mem::size_of::<Octet>());
             content.put_u8(bytes.len() as u8);
             content.extend_from_slice(bytes);
             Ok(ShortStr(content))
@@ -37,14 +37,14 @@ impl AsBytes for ShortStr {
 }
 
 pub struct LongStr (BytesMut);
-const LONG_STR_LEN_SIZE: usize = std::mem::size_of::<Long>();
+
 impl LongStr {
     // build a LongStr from bytes, the length will be convert to big endian
     pub fn from_bytes(bytes: &[u8]) -> Result<LongStr, crate::error::Error> {
         if bytes.len() > 0xffffffff as usize {
             Err(crate::error::Error::from(error::ErrorKind::StrTooLong))
         } else {
-            let mut content = BytesMut::with_capacity(bytes.len() + LONG_STR_LEN_SIZE);
+            let mut content = BytesMut::with_capacity(bytes.len() + std::mem::size_of::<Long>());
             // u32 will put with big endian
             content.put_u32(bytes.len() as u32);
             content.extend_from_slice(bytes);
