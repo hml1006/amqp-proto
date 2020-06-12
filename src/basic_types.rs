@@ -7,7 +7,7 @@ pub type Long = u32;
 pub type LongLong = u64;
 pub type Timestamp = u64;
 
-trait AsBytes {
+pub trait AsBytes {
     fn as_bytes(&self) -> &[u8];
 }
 
@@ -45,7 +45,8 @@ impl LongStr {
             Err(crate::error::Error::from(error::ErrorKind::StrTooLong))
         } else {
             let mut content = BytesMut::with_capacity(bytes.len() + LONG_STR_LEN_SIZE);
-            content.put_u32((bytes.len() as u32).to_be());
+            // u32 will put with big endian
+            content.put_u32(bytes.len() as u32);
             content.extend_from_slice(bytes);
             Ok(LongStr(content))
         }

@@ -3,11 +3,11 @@ pub mod frame;
 pub mod basic_types;
 pub mod error;
 
-pub use basic_types::{Octet, Short, Long, LongLong, ShortStr, LongStr};
+pub use basic_types::{Octet, Short, Long, LongLong, ShortStr, LongStr, AsBytes};
 
 #[cfg(test)]
 mod tests {
-    use crate::{ShortStr, LongStr};
+    use crate::{ShortStr, LongStr, AsBytes};
 
     #[test]
     fn test_short_str() {
