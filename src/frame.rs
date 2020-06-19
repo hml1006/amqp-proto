@@ -1,16 +1,14 @@
 
 // frame type
-pub struct FrameType {}
-
-impl FrameType {
-    pub const METHOD:u8 = 1u8;
-    pub const HEADER:u8 = 2u8;
-    pub const BODY:u8 = 3u8;
-    pub const HEARTBEAT:u8 = 4u8;
+pub enum FrameType {
+    METHOD = 1,
+    HEADER = 2,
+    BODY = 3,
+    HEARTBEAT = 4
 }
 
 // frame end octet, every frame should end with 0xce
-pub const FRAME_END:u8 = 0xce;
+pub const FRAME_END: u8 = 0xce;
 
 pub struct ProtocolHeader {
     protocol: [u8; 4],

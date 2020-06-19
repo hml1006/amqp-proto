@@ -3,6 +3,7 @@ use std::fmt::Formatter;
 pub enum ErrorKind {
     BadFrame,
     StrTooLong,
+    WrongShortStrFirstLetter
 }
 
 impl ErrorKind {
@@ -21,6 +22,10 @@ pub struct Error {
 impl Error {
     pub(crate) fn as_str(&self) -> &'static str {
         self.kind.as_str()
+    }
+
+    pub(crate) fn kind(&self) -> &ErrorKind {
+        &self.kind
     }
 }
 
