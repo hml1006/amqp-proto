@@ -38,9 +38,9 @@ impl ShortStr {
     #[inline]
     pub fn with_bytes(bytes: &[u8]) -> Result<Self, error::Error>{
         if bytes.len() > std::u8::MAX as usize {
-            return Err(error::Error::from(error::ErrorKind::StrTooLong));
+            return Err(error::Error::from(error::ErrorKind::SyntaxError));
         }
-
+        // TODO: check character validity
         Ok(ShortStr { len: bytes.len() as u8, value: String::from_utf8_lossy(bytes).to_string() })
 
     }
@@ -65,7 +65,7 @@ impl LongStr {
     #[inline]
     pub fn with_bytes(bytes: &[u8]) -> Result<LongStr, crate::error::Error> {
         if bytes.len() > MAX_LONG_STR_LEN {
-            Err(crate::error::Error::from(error::ErrorKind::StrTooLong))
+            Err(crate::error::Error::from(error::ErrorKind::SyntaxError))
         } else {
             Ok(LongStr {len: bytes.len() as u32, value: String::from_utf8_lossy(bytes).to_string()})
         }
@@ -160,12 +160,12 @@ impl FieldName {
         };
 
         if !is_start_char_ok {
-            return Err(error::Error::from(error::ErrorKind::WrongShortStrFirstLetter));
+            return Err(error::Error::from(error::ErrorKind::SyntaxError));
         }
 
         // max field name length is 128
         if bytes.len() > MAX_FIELD_NAME_LEN {
-            return Err(error::Error::from(error::ErrorKind::StrTooLong));
+            return Err(error::Error::from(error::ErrorKind::SyntaxError));
         }
 
         match ShortStr::with_bytes(bytes) {

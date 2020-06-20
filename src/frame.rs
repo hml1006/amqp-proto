@@ -1,3 +1,4 @@
+use crate::{FieldTable, LongStr};
 
 // frame type
 pub enum FrameType {
@@ -44,4 +45,87 @@ pub struct Frame {
     length: u32,
     payload: Payload,
     frame_end: u8
+}
+
+pub struct ConnectionStart {
+    version_major: u8,
+    version_minor: u8,
+    server_properties: FieldTable,
+    mechanisms: LongStr,
+    locales: LongStr,
+}
+
+pub struct ConnectionStartOk {
+    client_properties: FieldTable,
+    mechanisms: LongStr,
+    response: LongStr,
+    locales: LongStr
+}
+
+pub struct ConnectionSecure {
+    challenge: LongStr
+}
+
+pub struct ConnectionSecureOk {
+    response: LongStr
+}
+
+pub struct ConnectionTunre {
+    channel_max: u16,
+    frame_max: u32,
+    heartbeat: u16
+}
+
+pub struct ConnectionTuneOk {
+    channel_max: u16,
+    frame_max: u32,
+    heartbeat: u16
+}
+
+pub struct ConnectionOpen {
+    vhost: LongStr,
+    capabilities: LongStr,  // rabbitmq used
+    insist: bool
+}
+
+pub struct ConnectionOpenOk {
+    known_hosts: LongStr
+}
+
+pub struct ConnectionClose {
+    reply_code: u16,
+    reply_text: LongStr,
+    class_id: u16,
+    method_id: u16
+}
+
+pub struct ConnectionCloseOk {
+    dummy: u8               // fill struct
+}
+
+pub struct ChannelOpen {
+    out_of_band: LongStr
+}
+
+pub struct ChannelOpenOk {
+    channel_id: LongStr
+}
+
+pub struct ChannelFlow {
+    active: bool
+}
+
+pub struct ChannelFlowOk {
+    active: bool
+}
+
+pub struct ChannelClose {
+    reply_code: u16,
+    reply_text: LongStr,
+    class_id: u16,
+    method_id: u16
+}
+
+pub struct ChannelCloseOk {
+    dummy: u8           // fill struct
 }

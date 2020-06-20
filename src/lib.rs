@@ -1,5 +1,11 @@
-
+pub mod command;
+pub mod channel;
+pub mod connection;
+pub mod exchange;
 pub mod frame;
+pub mod queue;
+pub mod user;
+pub mod vhost;
 pub mod basic_types;
 pub mod error;
 
@@ -28,7 +34,7 @@ mod tests {
 
         let short_str = ShortStr::with_bytes(tmp.as_bytes());
         let ret = match short_str.err().unwrap().kind() {
-            ErrorKind::StrTooLong => true,
+            ErrorKind::SyntaxError => true,
             _ => false
         };
         assert!(ret);
@@ -49,7 +55,7 @@ mod tests {
         }
         let long_str = LongStr::with_bytes(tmp.as_bytes());
         let ret = match long_str.err().unwrap().kind() {
-            ErrorKind::StrTooLong => true,
+            ErrorKind::SyntaxError => true,
             _ => false
         };
         assert!(ret);
@@ -80,14 +86,14 @@ mod tests {
         }
         let field_name = FieldName::with_bytes(tmp.as_bytes());
         let ret = match field_name.err().unwrap().kind() {
-            ErrorKind::StrTooLong => true,
+            ErrorKind::SyntaxError => true,
             _ => false
         };
         assert!(ret);
 
         let field_name = FieldName::with_bytes(b"1ello");
         let ret = match field_name.err().unwrap().kind() {
-            ErrorKind::WrongShortStrFirstLetter => true,
+            ErrorKind::SyntaxError => true,
             _ => false
         };
         assert!(ret);
