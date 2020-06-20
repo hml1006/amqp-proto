@@ -17,6 +17,7 @@ pub trait WriteToBuf {
     fn write_to_buf(&self, buffer: &mut BytesMut);
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct ShortStr {
     len: u8,
     value: String
@@ -49,6 +50,7 @@ impl WriteToBuf for ShortStr {
     }
 }
 
+#[derive(Debug)]
 pub struct LongStr {
     len: u32,
     value: String
@@ -73,6 +75,7 @@ impl WriteToBuf for LongStr {
     }
 }
 
+#[derive(Debug)]
 pub enum FieldValueKind {
     Boolean,        // 0 = False, else True
     I8,             // Octet
@@ -121,6 +124,7 @@ impl FieldValueKind {
     }
 }
 
+#[derive(Debug)]
 pub struct Decimal {
     scale: u8,
     value: u32
@@ -139,6 +143,7 @@ impl WriteToBuf for Decimal {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct FieldName(ShortStr);
 impl FieldName {
     #[inline]
@@ -182,22 +187,26 @@ pub type FieldArray = Vec<FieldValue>;
 
 impl WriteToBuf for FieldArray {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
+        // placeholder for array bytes length
+        buffer.put_u32(0);
         // save old length
         let old_len = buffer.len() as u32;
-        buffer.put_u32(0);  // placeholder for array bytes length
         for item in self {
             item.write_to_buf(buffer);
         }
         let arr_bytes_len = buffer.len() as u32 - old_len;
         // set length from beginning
         unsafe {
-            let ptr = buffer.as_mut_ptr() as isize + old_len as isize;
+            let ptr = buffer.as_mut_ptr() as isize + old_len as isize - std::mem::size_of::<u32>() as isize;
             let src = &arr_bytes_len.to_be_bytes();
             std::ptr::copy(src.as_ptr(), ptr as *mut u8, std::mem::size_of::<u32>());
         }
     }
 }
 
+pub type BytesArray = LongStr;
+
+#[derive(Debug)]
 enum FieldValueInner {
     Boolean(bool),
     U8(u8),
@@ -219,6 +228,7 @@ enum FieldValueInner {
     Void
 }
 
+#[derive(Debug)]
 pub struct FieldValue {
     kind: FieldValueKind,
     value: FieldValueInner
@@ -306,6 +316,11 @@ impl FieldValue {
     }
 
     #[inline]
+    pub fn from_bytes_array(value: BytesArray) ->FieldValue {
+        FieldValue { kind: FieldValueKind::ByteArray, value: FieldValueInner::BytesArray(value)}
+    }
+
+    #[inline]
     pub fn from_void() ->FieldValue {
         FieldValue { kind: FieldValueKind::Void, value: FieldValueInner::Void}
     }
@@ -355,9 +370,10 @@ pub type FieldTable = HashMap<FieldName, FieldValue>;
 
 impl WriteToBuf for FieldTable {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
+        // placeholder length
+        buffer.put_u32(0);
         // save length
         let old_len = buffer.len();
-        buffer.put_u32(0); // placeholder length
         for (k, v) in self {
             k.write_to_buf(buffer);
             v.write_to_buf(buffer);
@@ -365,7 +381,7 @@ impl WriteToBuf for FieldTable {
         let arr_bytes_len = (buffer.len() - old_len) as u32;
         // set length from beginning
         unsafe {
-            let ptr = buffer.as_mut_ptr() as isize + old_len as isize;
+            let ptr = buffer.as_mut_ptr() as isize + old_len as isize - std::mem::size_of::<u32>() as isize;
             let src = &arr_bytes_len.to_be_bytes();
             std::ptr::copy(src.as_ptr(), ptr as *mut u8, std::mem::size_of::<u32>());
         }
