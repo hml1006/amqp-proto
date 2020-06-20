@@ -3,12 +3,16 @@ use crate::error;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::{Hasher, Hash};
+use std::borrow::BorrowMut;
+use std::ops::IndexMut;
 
 const DEFAULT_BYTES_CAPACITY: usize = 8;
 // amqp0-9-1 field name length allowed is 128
 const MAX_FIELD_NAME_LEN: usize = 128;
 // max long string bytes length allowed
 const MAX_LONG_STR_LEN: usize = 64 * 1024;
+// default field table bytes length
+const DEFAULT_FIELD_TABLE_LEN: usize = 256;
 
 pub type Timestamp = u64;
 
@@ -187,19 +191,16 @@ pub type FieldArray = Vec<FieldValue>;
 
 impl WriteToBuf for FieldArray {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
-        // placeholder for array bytes length
+        let mut index = buffer.len();
         buffer.put_u32(0);
-        // save old length
-        let old_len = buffer.len() as u32;
         for item in self {
             item.write_to_buf(buffer);
         }
-        let arr_bytes_len = buffer.len() as u32 - old_len;
-        // set length from beginning
-        unsafe {
-            let ptr = buffer.as_mut_ptr() as isize + old_len as isize - std::mem::size_of::<u32>() as isize;
-            let src = &arr_bytes_len.to_be_bytes();
-            std::ptr::copy(src.as_ptr(), ptr as *mut u8, std::mem::size_of::<u32>());
+        let field_table_len = (buffer.len() - index - std::mem::size_of::<u32>()) as u32;
+        // set the true length of the field table
+        for i in &field_table_len.to_be_bytes() {
+            buffer[index] = *i;
+            index += 1;
         }
     }
 }
@@ -370,20 +371,17 @@ pub type FieldTable = HashMap<FieldName, FieldValue>;
 
 impl WriteToBuf for FieldTable {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
-        // placeholder length
+        let mut index = buffer.len();
         buffer.put_u32(0);
-        // save length
-        let old_len = buffer.len();
         for (k, v) in self {
             k.write_to_buf(buffer);
             v.write_to_buf(buffer);
         }
-        let arr_bytes_len = (buffer.len() - old_len) as u32;
-        // set length from beginning
-        unsafe {
-            let ptr = buffer.as_mut_ptr() as isize + old_len as isize - std::mem::size_of::<u32>() as isize;
-            let src = &arr_bytes_len.to_be_bytes();
-            std::ptr::copy(src.as_ptr(), ptr as *mut u8, std::mem::size_of::<u32>());
+        let field_table_len = (buffer.len() - index - std::mem::size_of::<u32>()) as u32;
+        // set the true length of the field table
+        for i in &field_table_len.to_be_bytes() {
+            buffer[index] = *i;
+            index += 1;
         }
     }
 }
