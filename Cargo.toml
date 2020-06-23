@@ -8,6 +8,4 @@ edition = "2018"
 
 [dependencies]
 bytes = "0.5"
-syn = "1.0.33"
-quote = "1.0.7"
 property = "0.3.1"
