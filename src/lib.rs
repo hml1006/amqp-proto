@@ -1,4 +1,4 @@
-pub mod command;
+
 pub mod channel;
 pub mod connection;
 pub mod exchange;
@@ -9,15 +9,33 @@ pub mod vhost;
 pub mod basic_types;
 pub mod error;
 
-pub use basic_types::{Timestamp, ShortStr, LongStr, WriteToBuf, Decimal, FieldName, FieldValue, FieldArray, FieldTable, BytesArray};
+use bytes::BytesMut;
+
+pub use basic_types::{Timestamp, ShortStr, LongStr, Decimal, FieldName, FieldValue, FieldArray, FieldTable, BytesArray};
+pub use frame::{Frame, FrameType, FRAME_END, ConnectionStart};
+
+pub trait WriteToBuf {
+    // write data to bytes buffer
+    fn write_to_buf(&self, buffer: &mut BytesMut);
+}
+
 
 #[cfg(test)]
 mod tests {
-    use crate::{WriteToBuf, ShortStr, LongStr, Decimal, FieldValue, FieldTable};
+    use crate::{WriteToBuf, ShortStr, LongStr, Decimal, FieldValue, FieldTable, ConnectionStart};
     use bytes::{BytesMut, BufMut};
     use std::borrow::BorrowMut;
-    use crate::error::{Error, ErrorKind};
+    use crate::error::ErrorKind;
     use crate::basic_types::{FieldName, FieldArray};
+
+    #[test]
+    fn test_connection_start() {
+        let mut connection_start = ConnectionStart::default();
+        connection_start.set_version_major(0);
+        connection_start.set_version_minor(9);
+
+        assert_eq!(connection_start.version_major(), 0);
+    }
 
     #[test]
     fn test_short_str() {
@@ -239,7 +257,7 @@ mod tests {
         let mut ret = BytesMut::with_capacity(128);
         ret.put_u8(b'F');
         ret.put_u32(27u32);
-        for (k, v) in &table {
+        for (k, _) in &table {
             if *k == FieldName::with_bytes(b"hello").unwrap() {
                 ret.put_u8(5u8);
                 ret.put_slice(b"hello");

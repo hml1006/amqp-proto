@@ -76,10 +76,6 @@ pub struct Error {
 }
 
 impl Error {
-    pub(crate) fn as_str(&self) -> String {
-        self.kind.to_string()
-    }
-
     pub fn kind(&self) -> &ErrorKind {
         &self.kind
     }

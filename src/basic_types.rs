@@ -1,27 +1,16 @@
 use bytes::{BytesMut, BufMut};
-use crate::error;
-use std::cell::RefCell;
+use crate::{error, WriteToBuf};
 use std::collections::HashMap;
 use std::hash::{Hasher, Hash};
-use std::borrow::BorrowMut;
-use std::ops::IndexMut;
 
-const DEFAULT_BYTES_CAPACITY: usize = 8;
 // amqp0-9-1 field name length allowed is 128
 const MAX_FIELD_NAME_LEN: usize = 128;
 // max long string bytes length allowed
 const MAX_LONG_STR_LEN: usize = 64 * 1024;
-// default field table bytes length
-const DEFAULT_FIELD_TABLE_LEN: usize = 256;
 
 pub type Timestamp = u64;
 
-pub trait WriteToBuf {
-    // write data to bytes buffer
-    fn write_to_buf(&self, buffer: &mut BytesMut);
-}
-
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct ShortStr {
     len: u8,
     value: String
@@ -54,7 +43,7 @@ impl WriteToBuf for ShortStr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LongStr {
     len: u32,
     value: String
