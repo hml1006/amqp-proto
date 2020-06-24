@@ -487,13 +487,13 @@ impl WriteToBuf for QueueBindOk {
 
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
-pub struct QeuuePurge {
+pub struct QueuePurge {
     ticket: u16,
     queue_name: ShortStr,
     no_wait: bool
 }
 
-impl WriteToBuf for QeuuePurge {
+impl WriteToBuf for QueuePurge {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
         self.queue_name.write_to_buf(buffer);
@@ -1549,7 +1549,7 @@ impl Default for Method {
     }
 }
 
-pub enum Arg {
+pub enum Property {
     Connection(ConnectionProperties),
     Channel(ChannelProperties),
     Access(AccessProperties),
@@ -1560,31 +1560,183 @@ pub enum Arg {
     Confirm(ConfirmProperties)
 }
 
-impl Default for Arg {
+impl Default for Property {
     fn default() -> Self {
-        Arg::Connection(ConnectionProperties::default())
+        Property::Connection(ConnectionProperties::default())
     }
 }
 
-impl WriteToBuf for Arg {
+impl WriteToBuf for Property {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
         match self {
-            Arg::Connection(properties) => properties.write_to_buf(buffer),
-            Arg::Channel(properties) => properties.write_to_buf(buffer),
-            Arg::Access(properties) => properties.write_to_buf(buffer),
-            Arg::Exchange(properties) => properties.write_to_buf(buffer),
-            Arg::Queue(properties) => properties.write_to_buf(buffer),
-            Arg::Basic(properties) => properties.write_to_buf(buffer),
-            Arg::Tx(properties) => properties.write_to_buf(buffer),
-            Arg::Confirm(properties) => properties.write_to_buf(buffer)
+            Property::Connection(properties) => properties.write_to_buf(buffer),
+            Property::Channel(properties) => properties.write_to_buf(buffer),
+            Property::Access(properties) => properties.write_to_buf(buffer),
+            Property::Exchange(properties) => properties.write_to_buf(buffer),
+            Property::Queue(properties) => properties.write_to_buf(buffer),
+            Property::Basic(properties) => properties.write_to_buf(buffer),
+            Property::Tx(properties) => properties.write_to_buf(buffer),
+            Property::Confirm(properties) => properties.write_to_buf(buffer)
         }
+    }
+}
+
+pub enum Arguments {
+    ConnectionStart(ConnectionStart),
+    ConnectionStartOk(ConnectionStartOk),
+    ConnectionSecure(ConnectionSecure),
+    ConnectionSecureOk(ConnectionSecureOk),
+    ConnectionTune(ConnectionTune),
+    ConnectionTuneOk(ConnectionTuneOk),
+    ConnectionOpen(ConnectionOpen),
+    ConnectionOpenOk(ConnectionOpenOk),
+    ConnectionClose(ConnectionClose),
+    ConnectionCloseOk(ConnectionCloseOk),
+
+    ChannelOpen(ChannelOpen),
+    ChannelOpenOk(ChannelOpenOk),
+    ChannelFlow(ChannelFlow),
+    ChannelFlowOk(ChannelFlowOk),
+    ChannelClose(ChannelClose),
+    ChannelCloseOk(ChannelCloseOk),
+
+    AccessRequest(AccessRequest),
+    AccessRequestOk(AccessRequestOk),
+
+    ExchangeDeclare(ExchangeDeclare),
+    ExchangeDeclareOk(ExchangeDeclareOk),
+    ExchangeDelete(ExchangeDelete),
+    ExchangeDeleteOk(ExchangeDeleteOk),
+    ExchangeBind(ExchangeBind),
+    ExchangeBindOk(ExchangeBindOk),
+    ExchangeUnbind(ExchangeUnbind),
+    ExchangeUnbindOk(ExchangeUnbindOk),
+
+    QueueDeclare(QueueDeclare),
+    QueueDeclareOk(QueueDeclareOk),
+    QueueBind(QueueBind),
+    QueueBindOk(QueueBindOk),
+    QueueUnbind(QueueUnbind),
+    QueueUnbindOk(QueueUnbindOk),
+    QueuePurge(QueuePurge),
+    QueuePurgeOk(QueuePurgeOk),
+    QueueDelete(QueueDelete),
+    QueueDeleteOk(QueueDeleteOk),
+
+    BasicQos(BasicQos),
+    BasicQosOk(BasicQosOk),
+    BasicConsume(BasicConsume),
+    BasicConsumeOk(BasicConsumeOk),
+    BasicCancel(BasicCancel),
+    BasicCancelOk(BasicCancelOk),
+    BasicPublish(BasicPublish),
+    BasicReturn(BasicReturn),
+    BasicDeliver(BasicDeliver),
+    BasicGet(BasicGet),
+    BasicGetOk(BasicGetOk),
+    BasicGetEmpty(BasicGetEmpty),
+    BasicAck(BasicAck),
+    BasicReject(BasicReject),
+    BasicRecoverAsync(BasicRecoverAsync),
+    BasicRecover(BasicRecover),
+    BasicRecoverOk(BasicRecoverOk),
+    BasicNack(BasicNack),
+
+    TxSelect(TxSelect),
+    TxSelectOk(TxSelectOk),
+    TxCommit(TxCommit),
+    TxCommitOk(TxCommitOk),
+    TxRollback(TxRollback),
+    TxRollbackOk(TxRollbackOk),
+    TxConfirmSelect(TxConfirmSelect),
+    TxConfirmSelectOk(TxConfirmSelectOk)
+}
+
+impl WriteToBuf for Arguments {
+    fn write_to_buf(&self, buffer: &mut BytesMut) {
+        match self {
+            Arguments::ConnectionStart(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionStartOk(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionSecure(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionSecureOk(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionTune(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionTuneOk(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionOpen(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionOpenOk(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionClose(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionCloseOk(args) => args.write_to_buf(buffer),
+
+            Arguments::ChannelOpen(args) => args.write_to_buf(buffer),
+            Arguments::ChannelOpenOk(args) => args.write_to_buf(buffer),
+            Arguments::ChannelFlow(args) => args.write_to_buf(buffer),
+            Arguments::ChannelFlowOk(args) => args.write_to_buf(buffer),
+            Arguments::ChannelClose(args) => args.write_to_buf(buffer),
+            Arguments::ChannelCloseOk(args) => args.write_to_buf(buffer),
+
+            Arguments::AccessRequest(args) => args.write_to_buf(buffer),
+            Arguments::AccessRequestOk(args) => args.write_to_buf(buffer),
+
+            Arguments::ExchangeDeclare(args) => args.write_to_buf(buffer),
+            Arguments::ExchangeDeclareOk(args) => args.write_to_buf(buffer),
+            Arguments::ExchangeDelete(args) => args.write_to_buf(buffer),
+            Arguments::ExchangeDeleteOk(args) => args.write_to_buf(buffer),
+            Arguments::ExchangeBind(args) => args.write_to_buf(buffer),
+            Arguments::ExchangeBindOk(args) => args.write_to_buf(buffer),
+            Arguments::ExchangeUnbind(args) => args.write_to_buf(buffer),
+            Arguments::ExchangeUnbindOk(args) => args.write_to_buf(buffer),
+
+            Arguments::QueueDeclare(args) => args.write_to_buf(buffer),
+            Arguments::QueueDeclareOk(args) => args.write_to_buf(buffer),
+            Arguments::QueueBind(args) => args.write_to_buf(buffer),
+            Arguments::QueueBindOk(args) => args.write_to_buf(buffer),
+            Arguments::QueueUnbind(args) => args.write_to_buf(buffer),
+            Arguments::QueueUnbindOk(args) => args.write_to_buf(buffer),
+            Arguments::QueuePurge(args) => args.write_to_buf(buffer),
+            Arguments::QueuePurgeOk(args) => args.write_to_buf(buffer),
+            Arguments::QueueDelete(args) => args.write_to_buf(buffer),
+            Arguments::QueueDeleteOk(args) => args.write_to_buf(buffer),
+
+            Arguments::BasicQos(args) => args.write_to_buf(buffer),
+            Arguments::BasicQosOk(args) => args.write_to_buf(buffer),
+            Arguments::BasicConsume(args) => args.write_to_buf(buffer),
+            Arguments::BasicConsumeOk(args) => args.write_to_buf(buffer),
+            Arguments::BasicCancel(args) => args.write_to_buf(buffer),
+            Arguments::BasicCancelOk(args) => args.write_to_buf(buffer),
+            Arguments::BasicPublish(args) => args.write_to_buf(buffer),
+            Arguments::BasicDeliver(args) => args.write_to_buf(buffer),
+            Arguments::BasicReturn(args) => args.write_to_buf(buffer),
+            Arguments::BasicGet(args) => args.write_to_buf(buffer),
+            Arguments::BasicGetOk(args) => args.write_to_buf(buffer),
+            Arguments::BasicGetEmpty(args) => args.write_to_buf(buffer),
+            Arguments::BasicAck(args) => args.write_to_buf(buffer),
+            Arguments::BasicReject(args) => args.write_to_buf(buffer),
+            Arguments::BasicRecoverAsync(args) => args.write_to_buf(buffer),
+            Arguments::BasicRecover(args) => args.write_to_buf(buffer),
+            Arguments::BasicRecoverOk(args) => args.write_to_buf(buffer),
+            Arguments::BasicNack(args) => args.write_to_buf(buffer),
+
+            Arguments::TxSelect(args) => args.write_to_buf(buffer),
+            Arguments::TxSelectOk(args) => args.write_to_buf(buffer),
+            Arguments::TxCommit(args) => args.write_to_buf(buffer),
+            Arguments::TxCommitOk(args) => args.write_to_buf(buffer),
+            Arguments::TxRollback(args) => args.write_to_buf(buffer),
+            Arguments::TxRollbackOk(args) => args.write_to_buf(buffer),
+            Arguments::TxConfirmSelect(args) => args.write_to_buf(buffer),
+            Arguments::TxConfirmSelectOk(args) => args.write_to_buf(buffer)
+        }
+    }
+}
+
+impl Default for Arguments {
+    fn default() -> Self {
+        Arguments::ConnectionClose(ConnectionClose::default())
     }
 }
 
 pub struct MethodPayload {
     class: Class,
     method: Method,
-    args: Arg
+    args: Arguments
 }
 
 impl Default for MethodPayload {
@@ -1592,7 +1744,7 @@ impl Default for MethodPayload {
         MethodPayload {
             class: Class::default(),
             method: Method::default(),
-            args: Arg::default()
+            args: Arguments::default()
         }
     }
 }
@@ -1609,8 +1761,7 @@ pub struct ContentHeaderPayload {
     class: Class,
     weight: u16,
     body_size: u64,
-    flags: u32,
-    properties: FieldTable
+    properties: Property
 }
 
 impl WriteToBuf for ContentHeaderPayload {
@@ -1618,7 +1769,6 @@ impl WriteToBuf for ContentHeaderPayload {
         buffer.put_u16(self.class.class_id());
         buffer.put_u16(self.weight);
         buffer.put_u64(self.body_size);
-        buffer.put_u32(self.flags);
         self.properties.write_to_buf(buffer);
     }
 }
