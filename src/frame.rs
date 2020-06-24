@@ -1484,6 +1484,8 @@ impl Default for Class {
 // frame end octet, every frame should end with 0xce
 pub const FRAME_END: u8 = 0xce;
 
+#[derive(Property)]
+#[property(get(public), set(public))]
 pub struct ProtocolHeader {
     protocol: [u8; 4],
     major_id: u8,
