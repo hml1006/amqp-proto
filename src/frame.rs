@@ -1511,6 +1511,12 @@ pub const PROTOCOL_HEADER: ProtocolHeader = ProtocolHeader {
     minor_version: 1
 };
 
+impl Default for ProtocolHeader {
+    fn default() -> Self {
+        PROTOCOL_HEADER
+    }
+}
+
 pub enum Method {
     ConnectionMethod(ConnectionMethod),
     ChannelMethod(ChannelMethod),
