@@ -1487,7 +1487,7 @@ pub const FRAME_END: u8 = 0xce;
 #[derive(Property)]
 #[property(get(public), set(public))]
 pub struct ProtocolHeader {
-    protocol: [u8; 4],
+    protocol: Vec<u8>,
     major_id: u8,
     minor_id: u8,
     major_version: u8,
@@ -1504,18 +1504,15 @@ impl WriteToBuf for ProtocolHeader {
     }
 }
 
-// default protocol header
-pub const PROTOCOL_HEADER: ProtocolHeader = ProtocolHeader {
-    protocol: *b"AMQP",
-    major_id: 0,
-    minor_id: 0,
-    major_version: 9,
-    minor_version: 1
-};
-
 impl Default for ProtocolHeader {
     fn default() -> Self {
-        PROTOCOL_HEADER
+        ProtocolHeader {
+            protocol: Vec::from("AMQP"),
+            major_id: 0,
+            minor_id: 0,
+            major_version: 9,
+            minor_version: 1
+        }
     }
 }
 
