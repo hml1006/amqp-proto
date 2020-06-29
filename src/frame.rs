@@ -1233,7 +1233,8 @@ pub enum FrameType {
     METHOD,
     HEADER,
     BODY,
-    HEARTBEAT
+    HEARTBEAT,
+    UNKNOWN
 }
 
 impl FrameType {
@@ -1242,7 +1243,8 @@ impl FrameType {
             FrameType::METHOD => 1,
             FrameType::HEADER => 2,
             FrameType::BODY => 3,
-            FrameType::HEARTBEAT => 4
+            FrameType::HEARTBEAT => 4,
+            FrameType::UNKNOWN => 0xff
         }
     }
 }
@@ -1250,6 +1252,18 @@ impl FrameType {
 impl Default for FrameType {
     fn default() -> Self {
         FrameType::METHOD
+    }
+}
+
+impl From<u8> for FrameType {
+    fn from(type_id: u8) -> Self {
+        match type_id {
+            1 => FrameType::METHOD,
+            2 => FrameType::HEADER,
+            3 => FrameType::BODY,
+            4 => FrameType::HEARTBEAT,
+            _ => FrameType::UNKNOWN
+        }
     }
 }
 
@@ -1284,7 +1298,7 @@ impl MethodId for ConnectionMethod {
             ConnectionMethod::OpenOk => 41,
             ConnectionMethod::Close => 50,
             ConnectionMethod::CloseOk => 51,
-            ConnectionMethod::Unknown => 0xff
+            ConnectionMethod::Unknown => 0xffff
         }
     }
 }
@@ -1295,8 +1309,8 @@ impl Default for ConnectionMethod {
     }
 }
 
-impl From<u8> for ConnectionMethod {
-    fn from(method_id: u8) -> Self {
+impl From<u16> for ConnectionMethod {
+    fn from(method_id: u16) -> Self {
         match method_id {
             10 => ConnectionMethod::Start,
             11 => ConnectionMethod::StartOk,
@@ -1332,7 +1346,7 @@ impl MethodId for ChannelMethod {
             ChannelMethod::FlowOk => 21,
             ChannelMethod::Close => 40,
             ChannelMethod::CloseOk => 41,
-            ChannelMethod::Unknown => 0xff
+            ChannelMethod::Unknown => 0xffff
         }
     }
 }
@@ -1343,8 +1357,8 @@ impl Default for ChannelMethod {
     }
 }
 
-impl From<u8> for ChannelMethod {
-    fn from(method_id: u8) -> Self {
+impl From<u16> for ChannelMethod {
+    fn from(method_id: u16) -> Self {
         match method_id {
             10 => ChannelMethod::Open,
             11 => ChannelMethod::OpenOk,
@@ -1368,7 +1382,7 @@ impl MethodId for AccessMethod {
         match self {
             AccessMethod::Request => 10,
             AccessMethod::RequestOk => 11,
-            AccessMethod::Unknown => 0xff
+            AccessMethod::Unknown => 0xffff
         }
     }
 }
@@ -1379,8 +1393,8 @@ impl Default for AccessMethod {
     }
 }
 
-impl From<u8> for AccessMethod {
-    fn from(method_id: u8) -> Self {
+impl From<u16> for AccessMethod {
+    fn from(method_id: u16) -> Self {
         match method_id {
             10 => AccessMethod::Request,
             11 => AccessMethod::RequestOk,
@@ -1412,7 +1426,7 @@ impl MethodId for ExchangeMethod {
             ExchangeMethod::BindOk => 31,
             ExchangeMethod::Unbind => 40,
             ExchangeMethod::UnbindOk => 51,
-            ExchangeMethod::Unknown => 0xff
+            ExchangeMethod::Unknown => 0xffff
         }
     }
 }
@@ -1423,8 +1437,8 @@ impl Default for ExchangeMethod {
     }
 }
 
-impl From<u8> for ExchangeMethod {
-    fn from(method_id: u8) -> Self {
+impl From<u16> for ExchangeMethod {
+    fn from(method_id: u16) -> Self {
         match method_id {
             10 => ExchangeMethod::Declare,
             11 => ExchangeMethod::DeclareOk,
@@ -1466,7 +1480,7 @@ impl MethodId for QueueMethod {
             QueueMethod::PurgeOk => 31,
             QueueMethod::Delete => 40,
             QueueMethod::DeleteOk => 41,
-            QueueMethod::Unknown => 0xff
+            QueueMethod::Unknown => 0xffff
         }
     }
 }
@@ -1477,8 +1491,8 @@ impl Default for QueueMethod {
     }
 }
 
-impl From<u8> for QueueMethod {
-    fn from(method_id: u8) -> Self {
+impl From<u16> for QueueMethod {
+    fn from(method_id: u16) -> Self {
         match method_id {
             10 => QueueMethod::Declare,
             11 => QueueMethod::DeclareOk,
@@ -1536,7 +1550,7 @@ impl MethodId for BasicMethod {
             BasicMethod::RecoverAsync => 100,
             BasicMethod::Recover => 110,
             BasicMethod::RecoverOk => 111,
-            BasicMethod::Unknown => 0xff
+            BasicMethod::Unknown => 0xffff
         }
     }
 }
@@ -1547,8 +1561,8 @@ impl Default for BasicMethod {
     }
 }
 
-impl From<u8> for BasicMethod {
-    fn from(method_id: u8) -> Self {
+impl From<u16> for BasicMethod {
+    fn from(method_id: u16) -> Self {
         match method_id {
             10 => BasicMethod::Qos,
             11 => BasicMethod::QosOk,
@@ -1591,7 +1605,7 @@ impl MethodId for TxMethod {
             TxMethod::CommitOk => 21,
             TxMethod::Rollback => 30,
             TxMethod::RollbackOk => 31,
-            TxMethod::Unknown => 0xff
+            TxMethod::Unknown => 0xffff
         }
     }
 }
@@ -1602,8 +1616,8 @@ impl Default for TxMethod {
     }
 }
 
-impl From<u8> for TxMethod {
-    fn from(method_id: u8) -> Self {
+impl From<u16> for TxMethod {
+    fn from(method_id: u16) -> Self {
         match method_id {
             10 => TxMethod::Select,
             11 => TxMethod::SelectOk,
