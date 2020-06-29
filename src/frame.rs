@@ -1267,7 +1267,8 @@ pub enum ConnectionMethod {
     Open,
     OpenOk,
     Close,
-    CloseOk
+    CloseOk,
+    Unknown
 }
 
 impl MethodId for ConnectionMethod {
@@ -1282,14 +1283,33 @@ impl MethodId for ConnectionMethod {
             ConnectionMethod::Open => 40,
             ConnectionMethod::OpenOk => 41,
             ConnectionMethod::Close => 50,
-            ConnectionMethod::CloseOk => 51
+            ConnectionMethod::CloseOk => 51,
+            ConnectionMethod::Unknown => 0xff
         }
     }
 }
 
 impl Default for ConnectionMethod {
     fn default() -> Self {
-        ConnectionMethod::Close
+        ConnectionMethod::Unknown
+    }
+}
+
+impl From<u8> for ConnectionMethod {
+    fn from(method_id: u8) -> Self {
+        match method_id {
+            10 => ConnectionMethod::Start,
+            11 => ConnectionMethod::StartOk,
+            20 => ConnectionMethod::Secure,
+            21 => ConnectionMethod::SecureOk,
+            30 => ConnectionMethod::Tune,
+            31 => ConnectionMethod::TuneOk,
+            40 => ConnectionMethod::Open,
+            41 => ConnectionMethod::OpenOk,
+            50 => ConnectionMethod::Close,
+            51 => ConnectionMethod::CloseOk,
+            _  => ConnectionMethod::Unknown
+        }
     }
 }
 
@@ -1299,7 +1319,8 @@ pub enum ChannelMethod {
     Flow,
     FlowOk,
     Close,
-    CloseOk
+    CloseOk,
+    Unknown
 }
 
 impl MethodId for ChannelMethod {
@@ -1310,21 +1331,60 @@ impl MethodId for ChannelMethod {
             ChannelMethod::Flow => 20,
             ChannelMethod::FlowOk => 21,
             ChannelMethod::Close => 40,
-            ChannelMethod::CloseOk => 41
+            ChannelMethod::CloseOk => 41,
+            ChannelMethod::Unknown => 0xff
+        }
+    }
+}
+
+impl Default for ChannelMethod {
+    fn default() -> ChannelMethod {
+        ChannelMethod::Unknown
+    }
+}
+
+impl From<u8> for ChannelMethod {
+    fn from(method_id: u8) -> Self {
+        match method_id {
+            10 => ChannelMethod::Open,
+            11 => ChannelMethod::OpenOk,
+            20 => ChannelMethod::Flow,
+            21 => ChannelMethod::FlowOk,
+            40 => ChannelMethod::Close,
+            41 => ChannelMethod::CloseOk,
+            _  => ChannelMethod::Unknown
         }
     }
 }
 
 pub enum AccessMethod {
     Request,
-    RequestOk
+    RequestOk,
+    Unknown
 }
 
 impl MethodId for AccessMethod {
     fn method_id(&self) -> u16 {
         match self {
             AccessMethod::Request => 10,
-            AccessMethod::RequestOk => 11
+            AccessMethod::RequestOk => 11,
+            AccessMethod::Unknown => 0xff
+        }
+    }
+}
+
+impl Default for AccessMethod {
+    fn default() -> Self {
+        AccessMethod::Unknown
+    }
+}
+
+impl From<u8> for AccessMethod {
+    fn from(method_id: u8) -> Self {
+        match method_id {
+            10 => AccessMethod::Request,
+            11 => AccessMethod::RequestOk,
+            _  => AccessMethod::Unknown
         }
     }
 }
@@ -1337,7 +1397,8 @@ pub enum ExchangeMethod {
     Bind,
     BindOk,
     Unbind,
-    UnbindOk
+    UnbindOk,
+    Unknown
 }
 
 impl MethodId for ExchangeMethod {
@@ -1350,7 +1411,30 @@ impl MethodId for ExchangeMethod {
             ExchangeMethod::Bind => 30,
             ExchangeMethod::BindOk => 31,
             ExchangeMethod::Unbind => 40,
-            ExchangeMethod::UnbindOk => 51
+            ExchangeMethod::UnbindOk => 51,
+            ExchangeMethod::Unknown => 0xff
+        }
+    }
+}
+
+impl Default for ExchangeMethod {
+    fn default() -> Self {
+        ExchangeMethod::Unknown
+    }
+}
+
+impl From<u8> for ExchangeMethod {
+    fn from(method_id: u8) -> Self {
+        match method_id {
+            10 => ExchangeMethod::Declare,
+            11 => ExchangeMethod::DeclareOk,
+            20 => ExchangeMethod::Delete,
+            21 => ExchangeMethod::DeleteOk,
+            30 => ExchangeMethod::Bind,
+            31 => ExchangeMethod::BindOk,
+            40 => ExchangeMethod::Unbind,
+            51 => ExchangeMethod::UnbindOk,
+            _  => ExchangeMethod::Unknown
         }
     }
 }
@@ -1365,7 +1449,8 @@ pub enum QueueMethod {
     Purge,
     PurgeOk,
     Delete,
-    DeleteOk
+    DeleteOk,
+    Unknown
 }
 
 impl MethodId for QueueMethod {
@@ -1380,7 +1465,32 @@ impl MethodId for QueueMethod {
             QueueMethod::Purge => 30,
             QueueMethod::PurgeOk => 31,
             QueueMethod::Delete => 40,
-            QueueMethod::DeleteOk => 41
+            QueueMethod::DeleteOk => 41,
+            QueueMethod::Unknown => 0xff
+        }
+    }
+}
+
+impl Default for QueueMethod {
+    fn default() -> Self {
+        QueueMethod::Unknown
+    }
+}
+
+impl From<u8> for QueueMethod {
+    fn from(method_id: u8) -> Self {
+        match method_id {
+            10 => QueueMethod::Declare,
+            11 => QueueMethod::DeclareOk,
+            20 => QueueMethod::Bind,
+            21 => QueueMethod::BindOk,
+            50 => QueueMethod::Unbind,
+            51 => QueueMethod::UnbindOk,
+            30 => QueueMethod::Purge,
+            31 => QueueMethod::PurgeOk,
+            40 => QueueMethod::Delete,
+            41 => QueueMethod::DeleteOk,
+            _  => QueueMethod::Unknown
         }
     }
 }
@@ -1402,7 +1512,8 @@ pub enum BasicMethod {
     Reject,
     RecoverAsync,
     Recover,
-    RecoverOk
+    RecoverOk,
+    Unknown
 }
 
 impl MethodId for BasicMethod {
@@ -1424,7 +1535,39 @@ impl MethodId for BasicMethod {
             BasicMethod::Reject => 90,
             BasicMethod::RecoverAsync => 100,
             BasicMethod::Recover => 110,
-            BasicMethod::RecoverOk => 111
+            BasicMethod::RecoverOk => 111,
+            BasicMethod::Unknown => 0xff
+        }
+    }
+}
+
+impl Default for BasicMethod {
+    fn default() -> Self {
+        BasicMethod::Unknown
+    }
+}
+
+impl From<u8> for BasicMethod {
+    fn from(method_id: u8) -> Self {
+        match method_id {
+            10 => BasicMethod::Qos,
+            11 => BasicMethod::QosOk,
+            20 => BasicMethod::Consume,
+            21 => BasicMethod::ConsumeOk,
+            30 => BasicMethod::Cancel,
+            31 => BasicMethod::CancelOk,
+            40 => BasicMethod::Publish,
+            50 => BasicMethod::Return,
+            60 => BasicMethod::Deliver,
+            70 => BasicMethod::Get,
+            71 => BasicMethod::GetOk,
+            72 => BasicMethod::GetEmpty,
+            80 => BasicMethod::Ack,
+            90 => BasicMethod::Reject,
+            100 => BasicMethod::RecoverAsync,
+            110 => BasicMethod::Recover,
+            111 => BasicMethod::RecoverOk,
+            _  => BasicMethod::Unknown
         }
     }
 }
@@ -1435,7 +1578,8 @@ pub enum TxMethod {
     Commit,
     CommitOk,
     Rollback,
-    RollbackOk
+    RollbackOk,
+    Unknown
 }
 
 impl MethodId for TxMethod {
@@ -1446,7 +1590,28 @@ impl MethodId for TxMethod {
             TxMethod::Commit => 20,
             TxMethod::CommitOk => 21,
             TxMethod::Rollback => 30,
-            TxMethod::RollbackOk => 31
+            TxMethod::RollbackOk => 31,
+            TxMethod::Unknown => 0xff
+        }
+    }
+}
+
+impl Default for TxMethod {
+    fn default() -> Self {
+        TxMethod::Unknown
+    }
+}
+
+impl From<u8> for TxMethod {
+    fn from(method_id: u8) -> Self {
+        match method_id {
+            10 => TxMethod::Select,
+            11 => TxMethod::SelectOk,
+            20 => TxMethod::Commit,
+            21 => TxMethod::CommitOk,
+            30 => TxMethod::Rollback,
+            31 => TxMethod::RollbackOk,
+            _  => TxMethod::Unknown
         }
     }
 }
@@ -1459,6 +1624,7 @@ pub enum Class {
     Queue,
     Basic,
     Tx,
+    Unknown
 }
 
 impl Class {
@@ -1470,7 +1636,23 @@ impl Class {
             Class::Exchange => 40,
             Class::Queue => 50,
             Class::Basic => 60,
-            Class::Tx => 90
+            Class::Tx => 90,
+            Class::Unknown => 0xffff
+        }
+    }
+}
+
+impl From<u16> for Class {
+    fn from(class_id: u16) -> Self {
+        match class_id {
+            10 => Class::Connection,
+            20 => Class::Channel,
+            30 => Class::Access,
+            40 => Class::Exchange,
+            50 => Class::Queue,
+            60 => Class::Basic,
+            90 => Class::Tx,
+            _  => Class::Unknown
         }
     }
 }
