@@ -89,6 +89,7 @@ pub enum FieldValueKind {
     FieldTable,     // nested field table
     ByteArray,      // same as rabbitmq, len + bytes
     Void,           // no field
+    Unknown
 }
 
 impl FieldValueKind {
@@ -112,7 +113,34 @@ impl FieldValueKind {
             FieldValueKind::FieldArray => b'A',
             FieldValueKind::FieldTable => b'F',
             FieldValueKind::ByteArray => b'x',
-            FieldValueKind::Void => b'V'
+            FieldValueKind::Void => b'V',
+            FieldValueKind::Unknown => 0xff
+        }
+    }
+}
+
+impl From<u8> for FieldValueKind {
+    fn from(tag: u8) -> Self {
+        match tag {
+            b't' => FieldValueKind::Boolean,
+            b'b' => FieldValueKind::I8,
+            b'B' => FieldValueKind::U8,
+            b's' => FieldValueKind::I16,
+            b'u' => FieldValueKind::U16,
+            b'I' => FieldValueKind::I32,
+            b'i' => FieldValueKind::U32,
+            b'l' => FieldValueKind::I64,
+            b'L' => FieldValueKind::U64,
+            b'f' => FieldValueKind::F32,
+            b'd' => FieldValueKind::F64,
+            b'T' => FieldValueKind::Timestamp,
+            b'D' => FieldValueKind::Decimal,
+            b'S' => FieldValueKind::LongStr,
+            b'A' => FieldValueKind::FieldArray,
+            b'F' => FieldValueKind::FieldTable,
+            b'x' => FieldValueKind::ByteArray,
+            b'V' => FieldValueKind::Void,
+            _ => FieldValueKind::Unknown
         }
     }
 }
