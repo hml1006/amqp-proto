@@ -1527,6 +1527,7 @@ pub enum BasicMethod {
     RecoverAsync,
     Recover,
     RecoverOk,
+    Nack,
     Unknown
 }
 
@@ -1550,6 +1551,7 @@ impl MethodId for BasicMethod {
             BasicMethod::RecoverAsync => 100,
             BasicMethod::Recover => 110,
             BasicMethod::RecoverOk => 111,
+            BasicMethod::Nack => 120,
             BasicMethod::Unknown => 0xffff
         }
     }
