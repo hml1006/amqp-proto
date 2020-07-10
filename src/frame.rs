@@ -1630,6 +1630,7 @@ impl From<u16> for TxMethod {
     }
 }
 
+#[derive(Clone)]
 pub enum Class {
     Connection,
     Channel,
