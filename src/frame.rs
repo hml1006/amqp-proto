@@ -583,14 +583,14 @@ impl WriteToBuf for QueueUnbindOk {
 #[property(get(public), set(public))]
 pub struct BasicQos {
     prefetch_size: u32,
-    prefetch_count: u32,
+    prefetch_count: u16,
     global: bool
 }
 
 impl WriteToBuf for BasicQos {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.prefetch_size);
-        buffer.put_u32(self.prefetch_count);
+        buffer.put_u16(self.prefetch_count);
         buffer.put_u8(if self.global { 1 } else { 0 });
     }
 }
