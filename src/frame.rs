@@ -1881,8 +1881,9 @@ pub enum Arguments {
     TxCommitOk(TxCommitOk),
     TxRollback(TxRollback),
     TxRollbackOk(TxRollbackOk),
-    TxConfirmSelect(ConfirmSelect),
-    TxConfirmSelectOk(ConfirmSelectOk)
+
+    ConfirmSelect(ConfirmSelect),
+    ConfirmSelectOk(ConfirmSelectOk)
 }
 
 impl WriteToBuf for Arguments {
@@ -1954,8 +1955,9 @@ impl WriteToBuf for Arguments {
             Arguments::TxCommitOk(args) => args.write_to_buf(buffer),
             Arguments::TxRollback(args) => args.write_to_buf(buffer),
             Arguments::TxRollbackOk(args) => args.write_to_buf(buffer),
-            Arguments::TxConfirmSelect(args) => args.write_to_buf(buffer),
-            Arguments::TxConfirmSelectOk(args) => args.write_to_buf(buffer)
+
+            Arguments::ConfirmSelect(args) => args.write_to_buf(buffer),
+            Arguments::ConfirmSelectOk(args) => args.write_to_buf(buffer)
         }
     }
 }
