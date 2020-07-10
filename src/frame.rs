@@ -937,11 +937,11 @@ impl WriteToBuf for TxRollbackOk {
 
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
-pub struct TxConfirmSelect {
+pub struct ConfirmSelect {
     no_wait: bool
 }
 
-impl WriteToBuf for TxConfirmSelect {
+impl WriteToBuf for ConfirmSelect {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
         buffer.put_u8(if self.no_wait { 1 } else { 0 });
     }
@@ -949,11 +949,11 @@ impl WriteToBuf for TxConfirmSelect {
 
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
-pub struct TxConfirmSelectOk {
+pub struct ConfirmSelectOk {
     dummy: u8           // fill struct
 }
 
-impl WriteToBuf for TxConfirmSelectOk {
+impl WriteToBuf for ConfirmSelectOk {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
         buffer.put_u8(self.dummy);
     }
@@ -1588,6 +1588,38 @@ impl From<u16> for BasicMethod {
     }
 }
 
+pub enum ConfirmMethod {
+    Select,
+    SelectOk,
+    Unknown
+}
+
+impl MethodId for ConfirmMethod {
+    fn method_id(&self) -> u16 {
+        match self {
+            ConfirmMethod::Select => 10,
+            ConfirmMethod::SelectOk => 11,
+            ConfirmMethod::Unknown => 0xffff
+        }
+    }
+}
+
+impl Default for ConfirmMethod {
+    fn default() -> Self {
+        ConfirmMethod::Unknown
+    }
+}
+
+impl From<u16> for ConfirmMethod {
+    fn from(method_id: u16) -> Self {
+        match method_id {
+            10 => ConfirmMethod::Select,
+            11 => ConfirmMethod::SelectOk,
+            _ => ConfirmMethod::Unknown
+        }
+    }
+}
+
 pub enum TxMethod {
     Select,
     SelectOk,
@@ -1641,6 +1673,7 @@ pub enum Class {
     Queue,
     Basic,
     Tx,
+    Confirm,
     Unknown
 }
 
@@ -1653,6 +1686,7 @@ impl Class {
             Class::Exchange => 40,
             Class::Queue => 50,
             Class::Basic => 60,
+            Class::Confirm => 85,
             Class::Tx => 90,
             Class::Unknown => 0xffff
         }
@@ -1668,6 +1702,7 @@ impl From<u16> for Class {
             40 => Class::Exchange,
             50 => Class::Queue,
             60 => Class::Basic,
+            85 => Class::Confirm,
             90 => Class::Tx,
             _  => Class::Unknown
         }
@@ -1722,6 +1757,7 @@ pub enum Method {
     ExchangeMethod(ExchangeMethod),
     QueueMethod(QueueMethod),
     BasicMethod(BasicMethod),
+    ConfirmMethod(ConfirmMethod),
     TxMethod(TxMethod)
 }
 
@@ -1734,6 +1770,7 @@ impl MethodId for Method {
             Method::ExchangeMethod(method) => method.method_id(),
             Method::QueueMethod(method) => method.method_id(),
             Method::BasicMethod(method) => method.method_id(),
+            Method::ConfirmMethod(method) => method.method_id(),
             Method::TxMethod(method) => method.method_id()
         }
     }
@@ -1844,8 +1881,8 @@ pub enum Arguments {
     TxCommitOk(TxCommitOk),
     TxRollback(TxRollback),
     TxRollbackOk(TxRollbackOk),
-    TxConfirmSelect(TxConfirmSelect),
-    TxConfirmSelectOk(TxConfirmSelectOk)
+    TxConfirmSelect(ConfirmSelect),
+    TxConfirmSelectOk(ConfirmSelectOk)
 }
 
 impl WriteToBuf for Arguments {
