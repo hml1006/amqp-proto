@@ -1968,20 +1968,12 @@ impl Default for Arguments {
     }
 }
 
+#[derive(Property, Default)]
+#[property(get(public), set(public))]
 pub struct MethodPayload {
     class: Class,
     method: Method,
     args: Arguments
-}
-
-impl Default for MethodPayload {
-    fn default() -> Self {
-        MethodPayload {
-            class: Class::default(),
-            method: Method::default(),
-            args: Arguments::default()
-        }
-    }
 }
 
 impl WriteToBuf for MethodPayload {
@@ -1992,6 +1984,8 @@ impl WriteToBuf for MethodPayload {
     }
 }
 
+#[derive(Property, Default)]
+#[property(get(public), set(public))]
 pub struct ContentHeaderPayload {
     class: Class,
     weight: u16,
@@ -2008,6 +2002,8 @@ impl WriteToBuf for ContentHeaderPayload {
     }
 }
 
+#[derive(Property, Default)]
+#[property(get(public), set(public))]
 pub struct ContentBodyPayload {
     payload: Vec<u8>,
 }
