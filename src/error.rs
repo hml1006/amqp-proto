@@ -1,6 +1,6 @@
 use std::fmt::Formatter;
 
-pub enum ErrorKind {
+pub enum AmqpErrorKind {
     ReplySuccess,
     ContentTooLarge,        // channel
     NoConsumers,            // channel
@@ -21,83 +21,83 @@ pub enum ErrorKind {
     InternalError,          // connection
 }
 
-impl ToString for ErrorKind {
+impl ToString for AmqpErrorKind {
     fn to_string(&self) -> String {
         match self {
-            ErrorKind::ReplySuccess => format!("{}, Success", self.code()),
-            ErrorKind::ContentTooLarge => format!("{}, Content too large", self.code()),
-            ErrorKind::NoConsumers => format!("{}, No consumers", self.code()),
-            ErrorKind::ConnectionForced => format!("{}, Connection forced", self.code()),
-            ErrorKind::InvalidPath => format!("{}, Invalid path", self.code()),
-            ErrorKind::AccessRefused => format!("{}, Access refused", self.code()),
-            ErrorKind::NotFound => format!("{}, Not found", self.code()),
-            ErrorKind::ResourceLocked => format!("{}, Resource locked", self.code()),
-            ErrorKind::PreconditionFailed => format!("{}, Precondition failed", self.code()),
-            ErrorKind::FrameError => format!("{}, Frame error", self.code()),
-            ErrorKind::SyntaxError => format!("{}, Syntax error", self.code()),
-            ErrorKind::CommandInvalid => format!("{}, Command invalid", self.code()),
-            ErrorKind::ChannelError => format!("{}, Channel error", self.code()),
-            ErrorKind::UnexpectedFrame => format!("{}, Unexpected frame", self.code()),
-            ErrorKind::ResourceError => format!("{}, Resource error", self.code()),
-            ErrorKind::NotAllowed => format!("{}, Not allowed", self.code()),
-            ErrorKind::NotImplemented => format!("{}, Not implemented", self.code()),
-            ErrorKind::InternalError => format!("{}, Internal error", self.code()),
+            AmqpErrorKind::ReplySuccess => format!("{}, Success", self.code()),
+            AmqpErrorKind::ContentTooLarge => format!("{}, Content too large", self.code()),
+            AmqpErrorKind::NoConsumers => format!("{}, No consumers", self.code()),
+            AmqpErrorKind::ConnectionForced => format!("{}, Connection forced", self.code()),
+            AmqpErrorKind::InvalidPath => format!("{}, Invalid path", self.code()),
+            AmqpErrorKind::AccessRefused => format!("{}, Access refused", self.code()),
+            AmqpErrorKind::NotFound => format!("{}, Not found", self.code()),
+            AmqpErrorKind::ResourceLocked => format!("{}, Resource locked", self.code()),
+            AmqpErrorKind::PreconditionFailed => format!("{}, Precondition failed", self.code()),
+            AmqpErrorKind::FrameError => format!("{}, Frame error", self.code()),
+            AmqpErrorKind::SyntaxError => format!("{}, Syntax error", self.code()),
+            AmqpErrorKind::CommandInvalid => format!("{}, Command invalid", self.code()),
+            AmqpErrorKind::ChannelError => format!("{}, Channel error", self.code()),
+            AmqpErrorKind::UnexpectedFrame => format!("{}, Unexpected frame", self.code()),
+            AmqpErrorKind::ResourceError => format!("{}, Resource error", self.code()),
+            AmqpErrorKind::NotAllowed => format!("{}, Not allowed", self.code()),
+            AmqpErrorKind::NotImplemented => format!("{}, Not implemented", self.code()),
+            AmqpErrorKind::InternalError => format!("{}, Internal error", self.code()),
         }
     }
 }
 
-impl ErrorKind {
+impl AmqpErrorKind {
     pub fn code(&self) -> u16 {
         match self {
-            ErrorKind::ReplySuccess => 200,
-            ErrorKind::ContentTooLarge => 311,
-            ErrorKind::NoConsumers => 313,
-            ErrorKind::ConnectionForced => 320,
-            ErrorKind::InvalidPath => 402,
-            ErrorKind::AccessRefused => 403,
-            ErrorKind::NotFound => 404,
-            ErrorKind::ResourceLocked => 405,
-            ErrorKind::PreconditionFailed => 406,
-            ErrorKind::FrameError => 501,
-            ErrorKind::SyntaxError => 502,
-            ErrorKind::CommandInvalid => 503,
-            ErrorKind::ChannelError => 504,
-            ErrorKind::UnexpectedFrame => 505,
-            ErrorKind::ResourceError => 506,
-            ErrorKind::NotAllowed => 530,
-            ErrorKind::NotImplemented => 540,
-            ErrorKind::InternalError => 541
+            AmqpErrorKind::ReplySuccess => 200,
+            AmqpErrorKind::ContentTooLarge => 311,
+            AmqpErrorKind::NoConsumers => 313,
+            AmqpErrorKind::ConnectionForced => 320,
+            AmqpErrorKind::InvalidPath => 402,
+            AmqpErrorKind::AccessRefused => 403,
+            AmqpErrorKind::NotFound => 404,
+            AmqpErrorKind::ResourceLocked => 405,
+            AmqpErrorKind::PreconditionFailed => 406,
+            AmqpErrorKind::FrameError => 501,
+            AmqpErrorKind::SyntaxError => 502,
+            AmqpErrorKind::CommandInvalid => 503,
+            AmqpErrorKind::ChannelError => 504,
+            AmqpErrorKind::UnexpectedFrame => 505,
+            AmqpErrorKind::ResourceError => 506,
+            AmqpErrorKind::NotAllowed => 530,
+            AmqpErrorKind::NotImplemented => 540,
+            AmqpErrorKind::InternalError => 541
         }
     }
 }
 
-pub struct Error {
-    kind: ErrorKind
+pub struct AmqpError {
+    kind: AmqpErrorKind
 }
 
-impl Error {
-    pub fn kind(&self) -> &ErrorKind {
+impl AmqpError {
+    pub fn kind(&self) -> &AmqpErrorKind {
         &self.kind
     }
 }
 
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
-        Error { kind }
+impl From<AmqpErrorKind> for AmqpError {
+    fn from(kind: AmqpErrorKind) -> Self {
+        AmqpError { kind }
     }
 }
 
-impl std::fmt::Display for Error {
+impl std::fmt::Display for AmqpError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_string())
     }
 }
 
-impl std::fmt::Debug for Error {
+impl std::fmt::Debug for AmqpError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_string())
     }
 }
 
-impl std::error::Error for Error {
+impl std::error::Error for AmqpError {
 }

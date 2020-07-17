@@ -1,70 +1,82 @@
 use bytes::{BytesMut, BufMut};
-use crate::{error, WriteToBuf};
 use std::collections::HashMap;
 use std::hash::{Hasher, Hash};
+use std::vec::Vec;
+use std::string::String;
+use crate::error;
+use crate::connection::ConnectionMethod;
+use crate::channel::ChannelMethod;
+use crate::access::AccessMethod;
+use crate::exchange::ExchangeMethod;
+use crate::queue::QueueMethod;
+use crate::basic::BasicMethod;
+use crate::confirm::ConfirmMethod;
+use crate::tx::TxMethod;
 
 // amqp0-9-1 field name length allowed is 128
 const MAX_FIELD_NAME_LEN: usize = 128;
 // max long string bytes length allowed
 const MAX_LONG_STR_LEN: usize = 64 * 1024;
 
+
+pub trait WriteToBuf {
+    // write data to bytes buffer
+    fn write_to_buf(&self, buffer: &mut BytesMut);
+}
+
+pub trait MethodId {
+    fn method_id(&self) -> u16;
+}
+
 pub type Timestamp = u64;
 
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct ShortStr {
-    len: u8,
-    value: String
-}
+#[derive(Default, Debug, PartialEq, Eq)]
+pub struct ShortStr (String);
 
 impl std::hash::Hash for ShortStr {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.value.hash(state);
+        self.0.hash(state);
     }
 }
 
 impl ShortStr {
     // build a ShortStr from bytes
     #[inline]
-    pub fn with_bytes(bytes: &[u8]) -> Result<Self, error::Error>{
+    pub fn with_bytes(bytes: &[u8]) -> Result<Self, error::AmqpError>{
         if bytes.len() > std::u8::MAX as usize {
-            return Err(error::Error::from(error::ErrorKind::SyntaxError));
+            return Err(error::AmqpError::from(error::AmqpErrorKind::SyntaxError));
         }
-        // TODO: check character validity
-        Ok(ShortStr { len: bytes.len() as u8, value: String::from_utf8_lossy(bytes).to_string() })
-
+        Ok(ShortStr(String::from_utf8_lossy(bytes).to_string()))
     }
 }
 
 impl WriteToBuf for ShortStr {
     #[inline]
     fn write_to_buf(&self, buffer: &mut BytesMut) {
-        buffer.put_u8(self.len);
-        buffer.extend_from_slice(&self.value.as_bytes());
+        buffer.put_u8(self.0.len() as u8);
+        buffer.extend_from_slice(&self.0.as_bytes());
     }
 }
 
 #[derive(Debug, Default)]
-pub struct LongStr {
-    len: u32,
-    value: String
-}
+pub struct LongStr(String);
 
 impl LongStr {
     // build a LongStr from bytes, the length will be convert to big endian
     #[inline]
-    pub fn with_bytes(bytes: &[u8]) -> Result<LongStr, crate::error::Error> {
+    pub fn with_bytes(bytes: &[u8]) -> Result<LongStr, crate::error::AmqpError> {
         if bytes.len() > MAX_LONG_STR_LEN {
-            Err(crate::error::Error::from(error::ErrorKind::SyntaxError))
+            Err(crate::error::AmqpError::from(error::AmqpErrorKind::SyntaxError))
         } else {
-            Ok(LongStr {len: bytes.len() as u32, value: String::from_utf8_lossy(bytes).to_string()})
+            Ok(LongStr(String::from_utf8_lossy(bytes).to_string()))
         }
     }
 }
 
 impl WriteToBuf for LongStr {
     fn write_to_buf(&self, buffer: &mut BytesMut) {
-        buffer.put_u32(self.len);
-        buffer.extend_from_slice(self.value.as_bytes());
+        buffer.put_u32(self.0.len() as u32);
+        buffer.extend_from_slice(self.0.as_bytes());
     }
 }
 
@@ -168,7 +180,7 @@ impl WriteToBuf for Decimal {
 pub struct FieldName(ShortStr);
 impl FieldName {
     #[inline]
-    pub fn with_bytes(bytes: &[u8]) -> Result<FieldName, error::Error> {
+    pub fn with_bytes(bytes: &[u8]) -> Result<FieldName, error::AmqpError> {
         // field name first letter should be '$'  '#' or letter
         let is_start_char_ok = match bytes[0] {
             b'$' | b'#' => true,
@@ -177,12 +189,12 @@ impl FieldName {
         };
 
         if !is_start_char_ok {
-            return Err(error::Error::from(error::ErrorKind::SyntaxError));
+            return Err(error::AmqpError::from(error::AmqpErrorKind::SyntaxError));
         }
 
         // max field name length is 128
         if bytes.len() > MAX_FIELD_NAME_LEN {
-            return Err(error::Error::from(error::ErrorKind::SyntaxError));
+            return Err(error::AmqpError::from(error::AmqpErrorKind::SyntaxError));
         }
 
         match ShortStr::with_bytes(bytes) {
@@ -403,3 +415,87 @@ impl WriteToBuf for FieldTable {
     }
 }
 
+
+#[derive(Clone)]
+pub enum Class {
+    Connection,
+    Channel,
+    Access,
+    Exchange,
+    Queue,
+    Basic,
+    Tx,
+    Confirm,
+    Unknown
+}
+
+impl Class {
+    pub fn class_id(&self) -> u16 {
+        match self {
+            Class::Connection => 10,
+            Class::Channel => 20,
+            Class::Access => 30,
+            Class::Exchange => 40,
+            Class::Queue => 50,
+            Class::Basic => 60,
+            Class::Confirm => 85,
+            Class::Tx => 90,
+            Class::Unknown => 0xffff
+        }
+    }
+}
+
+impl From<u16> for Class {
+    fn from(class_id: u16) -> Self {
+        match class_id {
+            10 => Class::Connection,
+            20 => Class::Channel,
+            30 => Class::Access,
+            40 => Class::Exchange,
+            50 => Class::Queue,
+            60 => Class::Basic,
+            85 => Class::Confirm,
+            90 => Class::Tx,
+            _  => Class::Unknown
+        }
+    }
+}
+
+impl Default for Class {
+    fn default() -> Self {
+        Class::Connection
+    }
+}
+
+
+pub enum Method {
+    ConnectionMethod(ConnectionMethod),
+    ChannelMethod(ChannelMethod),
+    AccessMethod(AccessMethod),
+    ExchangeMethod(ExchangeMethod),
+    QueueMethod(QueueMethod),
+    BasicMethod(BasicMethod),
+    ConfirmMethod(ConfirmMethod),
+    TxMethod(TxMethod)
+}
+
+impl MethodId for Method {
+    fn method_id(&self) -> u16 {
+        match self {
+            Method::ConnectionMethod(method) => method.method_id(),
+            Method::ChannelMethod(method) => method.method_id(),
+            Method::AccessMethod(method) => method.method_id(),
+            Method::ExchangeMethod(method) => method.method_id(),
+            Method::QueueMethod(method) => method.method_id(),
+            Method::BasicMethod(method) => method.method_id(),
+            Method::ConfirmMethod(method) => method.method_id(),
+            Method::TxMethod(method) => method.method_id()
+        }
+    }
+}
+
+impl Default for Method {
+    fn default() -> Self {
+        Method::ConnectionMethod(ConnectionMethod::default())
+    }
+}

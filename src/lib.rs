@@ -1,4 +1,8 @@
-
+mod confirm;
+mod tx;
+mod basic;
+mod access;
+mod common;
 pub mod channel;
 pub mod connection;
 pub mod exchange;
@@ -6,27 +10,20 @@ pub mod frame;
 pub mod queue;
 pub mod user;
 pub mod vhost;
-pub mod basic_types;
 pub mod error;
 
-use bytes::BytesMut;
-
-pub use basic_types::{Timestamp, ShortStr, LongStr, Decimal, FieldName, FieldValue, FieldArray, FieldTable, BytesArray};
-pub use frame::{Frame, FrameType, FRAME_END, ConnectionStart};
-
-pub trait WriteToBuf {
-    // write data to bytes buffer
-    fn write_to_buf(&self, buffer: &mut BytesMut);
-}
+pub use common::{Timestamp, ShortStr, LongStr, Decimal, FieldName, FieldValue, FieldArray, FieldTable, BytesArray};
+pub use frame::{Frame, FrameType, FRAME_END};
 
 
 #[cfg(test)]
 mod tests {
-    use crate::{WriteToBuf, ShortStr, LongStr, Decimal, FieldValue, FieldTable, ConnectionStart};
+    use crate::{ShortStr, LongStr, Decimal, FieldValue, FieldTable};
     use bytes::{BytesMut, BufMut};
     use std::borrow::BorrowMut;
-    use crate::error::ErrorKind;
-    use crate::basic_types::{FieldName, FieldArray};
+    use crate::error::AmqpErrorKind;
+    use crate::common::{WriteToBuf, FieldName, FieldArray};
+    use crate::connection::ConnectionStart;
 
     #[test]
     fn test_connection_start() {
@@ -52,7 +49,7 @@ mod tests {
 
         let short_str = ShortStr::with_bytes(tmp.as_bytes());
         let ret = match short_str.err().unwrap().kind() {
-            ErrorKind::SyntaxError => true,
+            AmqpErrorKind::SyntaxError => true,
             _ => false
         };
         assert!(ret);
@@ -73,7 +70,7 @@ mod tests {
         }
         let long_str = LongStr::with_bytes(tmp.as_bytes());
         let ret = match long_str.err().unwrap().kind() {
-            ErrorKind::SyntaxError => true,
+            AmqpErrorKind::SyntaxError => true,
             _ => false
         };
         assert!(ret);
@@ -104,14 +101,14 @@ mod tests {
         }
         let field_name = FieldName::with_bytes(tmp.as_bytes());
         let ret = match field_name.err().unwrap().kind() {
-            ErrorKind::SyntaxError => true,
+            AmqpErrorKind::SyntaxError => true,
             _ => false
         };
         assert!(ret);
 
         let field_name = FieldName::with_bytes(b"1ello");
         let ret = match field_name.err().unwrap().kind() {
-            ErrorKind::SyntaxError => true,
+            AmqpErrorKind::SyntaxError => true,
             _ => false
         };
         assert!(ret);
