@@ -1,4 +1,6 @@
+
 use bytes::{BytesMut, BufMut};
+use nom::{Err, Needed};
 use std::collections::HashMap;
 use std::hash::{Hasher, Hash};
 use std::vec::Vec;
@@ -12,6 +14,10 @@ use crate::queue::QueueMethod;
 use crate::basic::BasicMethod;
 use crate::confirm::ConfirmMethod;
 use crate::tx::TxMethod;
+use nom::number::streaming::{be_i8, be_u8, be_i16, be_u16, be_i32, be_u32, be_u64, be_i64, be_f32, be_f64};
+use crate::error::FrameDecodeErr;
+use nom::bytes::streaming::take;
+use nom::error::ErrorKind;
 
 // amqp0-9-1 field name length allowed is 128
 const MAX_FIELD_NAME_LEN: usize = 128;
@@ -19,9 +25,51 @@ const MAX_FIELD_NAME_LEN: usize = 128;
 const MAX_LONG_STR_LEN: usize = 64 * 1024;
 
 
-pub trait WriteToBuf {
+pub trait Encode {
     // write data to bytes buffer
-    fn write_to_buf(&self, buffer: &mut BytesMut);
+    fn encode(&self, buffer: &mut BytesMut);
+}
+
+pub trait Decode<T> {
+    // parse data from bytes buffer
+    fn decode(buffer: &[u8]) -> Result<(&[u8], T), FrameDecodeErr>;
+}
+
+// impl for primitive types
+macro_rules! decode_impl_for_primitive {
+    ($($t:ty)*) => {$(
+        paste::item! {
+            impl Decode<$t> for $t {
+                #[inline]
+                fn decode(buffer: &[u8]) -> Result<(&[u8], $t), FrameDecodeErr> {
+                    match [<be_ $t>]::<(_, ErrorKind)>(buffer) {
+                        Ok(v) => Ok(v),
+                        Err(e) => {
+                            match e {
+                                Err::Incomplete(Needed::Size(_)) | Err::Incomplete(Needed::Unknown) => return Err(FrameDecodeErr::Incomplete),
+                                Err::Error((_, e)) => return Err(FrameDecodeErr::NomErr(e)),
+                                Err::Failure((_, e)) => return Err(FrameDecodeErr::NomErr(e)),
+                            }
+                        }
+                    }
+            }
+        }
+        }
+    )*}
+}
+decode_impl_for_primitive!(u8 i8 u16 i16 u32 i32 u64 i64 f32 f64);
+
+pub(crate) fn take_bytes(buffer: &[u8], count: usize) -> Result<(&[u8], &[u8]), FrameDecodeErr> {
+    match take::<usize, &[u8], (&[u8], ErrorKind)>(count)(buffer) {
+        Ok(v) => Ok(v),
+        Err(e) => {
+            match e {
+                Err::Incomplete(Needed::Size(_)) | Err::Incomplete(Needed::Unknown) => return Err(FrameDecodeErr::Incomplete),
+                Err::Error((_, e)) => return Err(FrameDecodeErr::NomErr(e)),
+                Err::Failure((_, e)) => return Err(FrameDecodeErr::NomErr(e))
+            }
+        }
+    }
 }
 
 pub trait MethodId {
@@ -29,6 +77,7 @@ pub trait MethodId {
 }
 
 pub type Timestamp = u64;
+
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ShortStr (String);
@@ -42,19 +91,37 @@ impl std::hash::Hash for ShortStr {
 impl ShortStr {
     // build a ShortStr from bytes
     #[inline]
-    pub fn with_bytes(bytes: &[u8]) -> Result<Self, error::AmqpError>{
+    pub fn with_bytes(bytes: &[u8]) -> Result<Self, error::FrameDecodeErr>{
         if bytes.len() > std::u8::MAX as usize {
-            return Err(error::AmqpError::from(error::AmqpErrorKind::SyntaxError));
+            return Err(error::FrameDecodeErr::DecodeShortStrTooLarge);
         }
         Ok(ShortStr(String::from_utf8_lossy(bytes).to_string()))
     }
 }
 
-impl WriteToBuf for ShortStr {
+impl Encode for ShortStr {
     #[inline]
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(self.0.len() as u8);
         buffer.extend_from_slice(&self.0.as_bytes());
+    }
+}
+
+impl Decode<ShortStr> for ShortStr {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], ShortStr), FrameDecodeErr> {
+        let (buffer, length) = match u8::decode(buffer) {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+        let (buffer, data) = match take_bytes(buffer, length as usize) {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+        let short_str = match ShortStr::with_bytes(data) {
+            Ok(short_str) => short_str,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, short_str))
     }
 }
 
@@ -64,21 +131,178 @@ pub struct LongStr(String);
 impl LongStr {
     // build a LongStr from bytes, the length will be convert to big endian
     #[inline]
-    pub fn with_bytes(bytes: &[u8]) -> Result<LongStr, crate::error::AmqpError> {
+    pub fn with_bytes(bytes: &[u8]) -> Result<LongStr, FrameDecodeErr> {
         if bytes.len() > MAX_LONG_STR_LEN {
-            Err(crate::error::AmqpError::from(error::AmqpErrorKind::SyntaxError))
+            Err(FrameDecodeErr::DecodeLongStrTooLarge)
         } else {
             Ok(LongStr(String::from_utf8_lossy(bytes).to_string()))
         }
     }
 }
 
-impl WriteToBuf for LongStr {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for LongStr {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.0.len() as u32);
         buffer.extend_from_slice(self.0.as_bytes());
     }
 }
+
+impl Decode<LongStr> for LongStr {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], LongStr), FrameDecodeErr> {
+        let (buffer, length) = match u32::decode(buffer) {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+        let (buffer, data) = match take_bytes(buffer, length as usize) {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+        let long_str = match LongStr::with_bytes(data) {
+            Ok(long_str) => long_str,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, long_str))
+    }
+}
+
+pub type ByteArray = LongStr;
+
+#[derive(Debug)]
+pub struct Decimal {
+    scale: u8,
+    value: u32
+}
+
+impl Decimal {
+    pub fn new( scale: u8, value: u32) -> Self {
+        Decimal { scale: scale, value: value }
+    }
+}
+
+impl Encode for Decimal {
+    fn encode(&self, buffer: &mut BytesMut) {
+        buffer.put_u8(self.scale);
+        buffer.put_u32(self.value);
+    }
+}
+
+impl Decode<Decimal> for Decimal {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Decimal), FrameDecodeErr> {
+        let (buffer, scale) = match u8::decode(buffer) {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+        let (buffer, value) = match u32::decode(buffer) {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Decimal { scale, value }))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct FieldName(ShortStr);
+impl FieldName {
+    #[inline]
+    pub fn with_bytes(bytes: &[u8]) -> Result<FieldName, FrameDecodeErr> {
+        // field name first letter should be '$'  '#' or letter
+        let is_start_char_ok = match bytes[0] {
+            b'$' | b'#' => true,
+            b'a'..=b'z' | b'A'..=b'Z' => true,
+            _ => false
+        };
+
+        if !is_start_char_ok {
+            return Err(FrameDecodeErr::DecodeFieldNameStartCharWrong);
+        }
+
+        // max field name length is 128
+        if bytes.len() > MAX_FIELD_NAME_LEN {
+            return Err(FrameDecodeErr::DecodeFieldNameTooLarge);
+        }
+
+        match ShortStr::with_bytes(bytes) {
+            Ok(value) => Ok(FieldName(value)),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+impl Hash for FieldName {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl Encode for FieldName {
+    fn encode(&self, buffer: &mut BytesMut) {
+        self.0.encode(buffer);
+    }
+}
+
+impl Decode<FieldName> for FieldName {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], FieldName), FrameDecodeErr>{
+        let (buffer, length) = match u8::decode(buffer) {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+        let (buffer, data) = match take_bytes(buffer, length as usize) {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+
+        match FieldName::with_bytes(data) {
+            Ok(v) => Ok((buffer, v)),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+pub type FieldArray = Vec<FieldValue>;
+
+impl Encode for FieldArray {
+    fn encode(&self, buffer: &mut BytesMut) {
+        let mut index = buffer.len();
+        buffer.put_u32(0);
+        for item in self {
+            item.encode(buffer);
+        }
+        let field_table_len = (buffer.len() - index - std::mem::size_of::<u32>()) as u32;
+        // set the true length of the field table
+        for i in &field_table_len.to_be_bytes() {
+            buffer[index] = *i;
+            index += 1;
+        }
+    }
+}
+
+impl Decode<FieldArray> for FieldArray {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], FieldArray), FrameDecodeErr> {
+        // array bytes length
+        let (buffer, length) = match u32::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, data) = match take_bytes(buffer, length as usize) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let mut arr: Vec<FieldValue> = Vec::new();
+
+        loop {
+            let (data, value) = match FieldValue::decode(data) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            arr.push(value);
+            if data.len() == 0 {
+                return Ok((buffer, arr))
+            }
+        }
+    }
+}
+
+pub type BytesArray = LongStr;
 
 #[derive(Debug)]
 pub enum FieldValueKind {
@@ -156,85 +380,6 @@ impl From<u8> for FieldValueKind {
         }
     }
 }
-
-#[derive(Debug)]
-pub struct Decimal {
-    scale: u8,
-    value: u32
-}
-
-impl Decimal {
-    pub fn new( scale: u8, value: u32) -> Self {
-        Decimal { scale: scale, value: value }
-    }
-}
-
-impl WriteToBuf for Decimal {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
-        buffer.put_u8(self.scale);
-        buffer.put_u32(self.value);
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct FieldName(ShortStr);
-impl FieldName {
-    #[inline]
-    pub fn with_bytes(bytes: &[u8]) -> Result<FieldName, error::AmqpError> {
-        // field name first letter should be '$'  '#' or letter
-        let is_start_char_ok = match bytes[0] {
-            b'$' | b'#' => true,
-            b'a'..=b'z' | b'A'..=b'Z' => true,
-            _ => false
-        };
-
-        if !is_start_char_ok {
-            return Err(error::AmqpError::from(error::AmqpErrorKind::SyntaxError));
-        }
-
-        // max field name length is 128
-        if bytes.len() > MAX_FIELD_NAME_LEN {
-            return Err(error::AmqpError::from(error::AmqpErrorKind::SyntaxError));
-        }
-
-        match ShortStr::with_bytes(bytes) {
-            Ok(value) => Ok(FieldName(value)),
-            Err(e) => Err(e)
-        }
-    }
-}
-
-impl WriteToBuf for FieldName {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
-        self.0.write_to_buf(buffer);
-    }
-}
-
-impl Hash for FieldName {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
-
-pub type FieldArray = Vec<FieldValue>;
-
-impl WriteToBuf for FieldArray {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
-        let mut index = buffer.len();
-        buffer.put_u32(0);
-        for item in self {
-            item.write_to_buf(buffer);
-        }
-        let field_table_len = (buffer.len() - index - std::mem::size_of::<u32>()) as u32;
-        // set the true length of the field table
-        for i in &field_table_len.to_be_bytes() {
-            buffer[index] = *i;
-            index += 1;
-        }
-    }
-}
-
-pub type BytesArray = LongStr;
 
 #[derive(Debug)]
 enum FieldValueInner {
@@ -361,8 +506,8 @@ impl FieldValue {
     }
 }
 
-impl WriteToBuf for FieldValue {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for FieldValue {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(self.kind.as_u8());
         match &self.value {
             FieldValueInner::Boolean(v) => {
@@ -380,37 +525,108 @@ impl WriteToBuf for FieldValue {
             FieldValueInner::F32(v) => buffer.put_f32(*v),
             FieldValueInner::F64(v) => buffer.put_f64(*v),
             FieldValueInner::Timestamp(v) => buffer.put_u64(*v),
-            FieldValueInner::Decimal(v) => v.write_to_buf(buffer),
-            FieldValueInner::LongStr(v) => v.write_to_buf(buffer),
+            FieldValueInner::Decimal(v) => v.encode(buffer),
+            FieldValueInner::LongStr(v) => v.encode(buffer),
             FieldValueInner::FieldArray(v) => {
-                v.write_to_buf(buffer);
+                v.encode(buffer);
             }
             FieldValueInner::FieldTable(v) => {
-                v.write_to_buf(buffer);
+                v.encode(buffer);
             }
             FieldValueInner::BytesArray(v) => {
-                v.write_to_buf(buffer);
+                v.encode(buffer);
             }
             FieldValueInner::Void => {}
         }
     }
 }
 
+impl Decode<FieldValue> for FieldValue {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], FieldValue), FrameDecodeErr> {
+        let (buffer, value_type) = match u8::decode(buffer) {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+        match FieldValueKind::from(value_type) {
+            FieldValueKind::Boolean => {
+                match u8::decode(buffer) {
+                    Ok((buffer, value)) => {
+                        if value == 0u8 {
+                            Ok((buffer, FieldValue::from_bool(false)))
+                        } else {
+                            Ok((buffer, FieldValue::from_bool(true)))
+                        }
+                    },
+                    Err(e) => return Err(e)
+                }
+            }
+            FieldValueKind::I8 => i8::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_i8(value))),
+            FieldValueKind::U8 => u8::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_u8(value))),
+            FieldValueKind::I16 => i16::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_i16(value))),
+            FieldValueKind::U16 => u16::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_u16(value))),
+            FieldValueKind::I32 => i32::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_i32(value))),
+            FieldValueKind::U32 => u32::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_u32(value))),
+            FieldValueKind::I64 => i64::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_i64(value))),
+            FieldValueKind::U64 => u64::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_u64(value))),
+            FieldValueKind::F32 => f32::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_f32(value))),
+            FieldValueKind::F64 => f64::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_f64(value))),
+            FieldValueKind::Timestamp => u64::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_timestamp(value))),
+            FieldValueKind::Decimal => Decimal::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_decimal(value))),
+            FieldValueKind::LongStr => LongStr::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_long_string(value))),
+            FieldValueKind::FieldArray => FieldArray::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_field_array(value))),
+            FieldValueKind::ByteArray => ByteArray::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_bytes_array(value))),
+            FieldValueKind::FieldTable => FieldTable::decode(buffer).map(|(buffer, value)| (buffer, FieldValue::from_field_table(value))),
+            FieldValueKind::Void => Ok((buffer, FieldValue::from_void())),
+            FieldValueKind::Unknown => return Err(FrameDecodeErr::DecodeFieldValueTypeUnknow)
+        }
+    }
+}
+
 pub type FieldTable = HashMap<FieldName, FieldValue>;
 
-impl WriteToBuf for FieldTable {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for FieldTable {
+    fn encode(&self, buffer: &mut BytesMut) {
         let mut index = buffer.len();
         buffer.put_u32(0);
         for (k, v) in self {
-            k.write_to_buf(buffer);
-            v.write_to_buf(buffer);
+            k.encode(buffer);
+            v.encode(buffer);
         }
         let field_table_len = (buffer.len() - index - std::mem::size_of::<u32>()) as u32;
         // set the true length of the field table
         for i in &field_table_len.to_be_bytes() {
             buffer[index] = *i;
             index += 1;
+        }
+    }
+}
+
+impl Decode<FieldTable> for FieldTable {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], FieldTable), FrameDecodeErr> {
+        let (buffer, length) = match u32::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, data) = match take_bytes(buffer, length as usize) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+
+        let mut table = FieldTable::new();
+
+        loop {
+            let (data, name) = match FieldName::decode(data) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            let (data, value) = match FieldValue::decode(data) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            table.insert(name, value);
+            if data.len() == 0 {
+                return Ok((buffer, table))
+            }
         }
     }
 }
@@ -497,5 +713,75 @@ impl MethodId for Method {
 impl Default for Method {
     fn default() -> Self {
         Method::ConnectionMethod(ConnectionMethod::default())
+    }
+}
+
+pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, FrameDecodeErr> {
+    match class {
+        Class::Connection => {
+            let method = ConnectionMethod::from(method_id);
+            if let ConnectionMethod::Unknown = method {
+                return Err(FrameDecodeErr::UnknownMethodType);
+            } else {
+                return Ok(Method::ConnectionMethod(method));
+            }
+        }
+        Class::Channel => {
+            let method = ChannelMethod::from(method_id);
+            if let ChannelMethod::Unknown = method {
+                return Err(FrameDecodeErr::UnknownMethodType);
+            } else {
+                return Ok(Method::ChannelMethod(method));
+            }
+        }
+        Class::Access => {
+            let method = AccessMethod::from(method_id);
+            if let AccessMethod::Unknown = method {
+                return Err(FrameDecodeErr::UnknownMethodType);
+            } else {
+                return Ok(Method::AccessMethod(method));
+            }
+        }
+        Class::Exchange => {
+            let method = ExchangeMethod::from(method_id);
+            if let ExchangeMethod::Unknown = method {
+                return Err(FrameDecodeErr::UnknownMethodType);
+            } else {
+                return Ok(Method::ExchangeMethod(method));
+            }
+        }
+        Class::Queue => {
+            let method = QueueMethod::from(method_id);
+            if let QueueMethod::Unknown = method {
+                return Err(FrameDecodeErr::UnknownMethodType);
+            } else {
+                return Ok(Method::QueueMethod(method));
+            }
+        }
+        Class::Basic => {
+            let method = BasicMethod::from(method_id);
+            if let BasicMethod::Unknown = method {
+                return Err(FrameDecodeErr::UnknownMethodType);
+            } else {
+                return Ok(Method::BasicMethod(method));
+            }
+        }
+        Class::Tx => {
+            let method = TxMethod::from(method_id);
+            if let TxMethod::Unknown = method {
+                return Err(FrameDecodeErr::UnknownMethodType);
+            } else {
+                return Ok(Method::TxMethod(method));
+            }
+        }
+        Class::Confirm => {
+            let method = ConfirmMethod::from(method_id);
+            if let ConfirmMethod::Unknown = method {
+                return Err(FrameDecodeErr::UnknownMethodType);
+            } else {
+                return Ok(Method::ConfirmMethod(method));
+            }
+        }
+        Class::Unknown => return Err(FrameDecodeErr::UnknownClassType)
     }
 }

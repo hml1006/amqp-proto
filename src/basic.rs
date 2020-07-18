@@ -1,7 +1,9 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
-use crate::common::{WriteToBuf, MethodId};
+use crate::common::{Encode, MethodId, Decode};
 use crate::{ShortStr, FieldTable, Timestamp};
+use crate::frame::{Arguments, Property};
+use crate::error::FrameDecodeErr;
 
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
@@ -11,19 +13,49 @@ pub struct BasicQos {
     global: bool
 }
 
-impl WriteToBuf for BasicQos {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicQos {
+    #[inline]
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.prefetch_size);
         buffer.put_u16(self.prefetch_count);
         buffer.put_u8(if self.global { 1 } else { 0 });
     }
 }
 
+impl Decode<Arguments> for BasicQos {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr> {
+        let (buffer, prefetch_size) = match u32::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, prefetch_count) = match u16::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let global = if 0 != (flags & (1 << 0)) {
+            true
+        } else {
+            false
+        };
+        Ok((buffer, Arguments::BasicQos(BasicQos { prefetch_size, prefetch_count, global})))
+    }
+}
+
 pub struct BasicQosOk;
 
-impl WriteToBuf for BasicQosOk {
+impl Encode for BasicQosOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for BasicQosOk {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::BasicQosOk(BasicQosOk)))
     }
 }
 
@@ -40,18 +72,48 @@ pub struct BasicConsume {
     args: FieldTable
 }
 
-impl WriteToBuf for BasicConsume {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicConsume {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.queue_name.write_to_buf(buffer);
-        self.consumer_tag.write_to_buf(buffer);
+        self.queue_name.encode(buffer);
+        self.consumer_tag.encode(buffer);
         let mut flag = 0u8;
         flag |= if self.no_local { 1 } else { 0 };
         flag |= if self.no_ack { 1 << 1 } else { 0 };
         flag |= if self.exclusive { 1 << 2 } else { 0 };
         flag |= if self.no_wait { 1 << 3 } else { 0 };
         buffer.put_u8(flag);
-        self.args.write_to_buf(buffer);
+        self.args.encode(buffer);
+    }
+}
+
+impl Decode<Arguments> for BasicConsume {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr> {
+        let (buffer, ticket) = match u16::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, queue_name) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, consumer_tag) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, args) = match FieldTable::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let no_local = if flags & (1 << 0) != 0 { true } else { false };
+        let no_ack = if flags & (1 << 1) != 0 { true } else { false };
+        let exclusive = if flags & (1 << 2) != 0 { true } else { false };
+        let no_wait = if flags & (1 << 3) != 0 { true } else { false };
+        Ok((buffer, Arguments::BasicConsume(BasicConsume { ticket, queue_name, consumer_tag, no_local, no_ack, exclusive, no_wait, args})))
     }
 }
 
@@ -61,9 +123,19 @@ pub struct BasicConsumeOk {
     consumer_tag: ShortStr
 }
 
-impl WriteToBuf for BasicConsumeOk {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
-        self.consumer_tag.write_to_buf(buffer);
+impl Encode for BasicConsumeOk {
+    fn encode(&self, buffer: &mut BytesMut) {
+        self.consumer_tag.encode(buffer);
+    }
+}
+
+impl Decode<Arguments> for BasicConsumeOk {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, consumer_tag) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Arguments::BasicConsumeOk(BasicConsumeOk { consumer_tag})))
     }
 }
 
@@ -74,10 +146,25 @@ pub struct BasicCancel {
     no_wait: bool
 }
 
-impl WriteToBuf for BasicCancel {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
-        self.consumer_tag.write_to_buf(buffer);
+impl Encode for BasicCancel {
+    fn encode(&self, buffer: &mut BytesMut) {
+        self.consumer_tag.encode(buffer);
         buffer.put_u8(if self.no_wait { 1 } else { 0 });
+    }
+}
+
+impl Decode<Arguments> for BasicCancel {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, consumer_tag) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let no_wait = if flags & (1 << 0) != 0 { true } else { false };
+        Ok((buffer, Arguments::BasicCancel(BasicCancel { consumer_tag, no_wait })))
     }
 }
 
@@ -87,9 +174,19 @@ pub struct BasicCancelOk {
     consumer_tag: ShortStr
 }
 
-impl WriteToBuf for BasicCancelOk {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
-        self.consumer_tag.write_to_buf(buffer);
+impl Encode for BasicCancelOk {
+    fn encode(&self, buffer: &mut BytesMut) {
+        self.consumer_tag.encode(buffer);
+    }
+}
+
+impl Decode<Arguments> for BasicCancelOk {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, consumer_tag) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Arguments::BasicCancelOk(BasicCancelOk { consumer_tag })))
     }
 }
 
@@ -103,15 +200,39 @@ pub struct BasicPublish {
     immediate: bool
 }
 
-impl WriteToBuf for BasicPublish {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicPublish {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.exchange_name.write_to_buf(buffer);
-        self.routing_key.write_to_buf(buffer);
+        self.exchange_name.encode(buffer);
+        self.routing_key.encode(buffer);
         let mut flag = 0u8;
         flag |= if self.mandatory { 1 } else { 0 };
         flag |= if self.immediate { 1 << 1 } else { 0 };
         buffer.put_u8(flag);
+    }
+}
+
+impl Decode<Arguments> for BasicPublish {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, ticket) = match u16::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, exchange_name) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, routing_key) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let mandatory = if flags & (1 << 0) != 0 { true } else { false };
+        let immediate = if flags & (1 << 1) != 0 { true } else { false };
+        Ok((buffer, Arguments::BasicPublish(BasicPublish { ticket, exchange_name, routing_key, mandatory, immediate })))
     }
 }
 
@@ -124,12 +245,34 @@ pub struct BasicReturn {
     routing_key: ShortStr
 }
 
-impl WriteToBuf for BasicReturn {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicReturn {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.reply_code);
-        self.reply_text.write_to_buf(buffer);
-        self.exchange_name.write_to_buf(buffer);
-        self.routing_key.write_to_buf(buffer);
+        self.reply_text.encode(buffer);
+        self.exchange_name.encode(buffer);
+        self.routing_key.encode(buffer);
+    }
+}
+
+impl Decode<Arguments> for BasicReturn {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, reply_code) = match u16::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, reply_text) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, exchange_name) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, routing_key) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Arguments::BasicReturn(BasicReturn { reply_code, reply_text, exchange_name, routing_key })))
     }
 }
 
@@ -143,13 +286,40 @@ pub struct BasicDeliver {
     routing_key: ShortStr
 }
 
-impl WriteToBuf for BasicDeliver {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
-        self.consumer_tag.write_to_buf(buffer);
+impl Encode for BasicDeliver {
+    fn encode(&self, buffer: &mut BytesMut) {
+        self.consumer_tag.encode(buffer);
         buffer.put_u64(self.delivery_tag);
         buffer.put_u8(if self.redelivered { 1 } else { 0 });
-        self.exchange_name.write_to_buf(buffer);
-        self.routing_key.write_to_buf(buffer);
+        self.exchange_name.encode(buffer);
+        self.routing_key.encode(buffer);
+    }
+}
+
+impl Decode<Arguments> for BasicDeliver {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, consumer_tag) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, delivery_tag) = match u64::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let redelivered = if flags & (1 << 0) != 0 { true } else { false };
+        let (buffer, exchange_name) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, routing_key) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Arguments::BasicDeliver(BasicDeliver { consumer_tag, delivery_tag, redelivered, exchange_name, routing_key})))
     }
 }
 
@@ -161,11 +331,30 @@ pub struct BasicGet {
     no_ack: bool
 }
 
-impl WriteToBuf for BasicGet {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicGet {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.queue_name.write_to_buf(buffer);
+        self.queue_name.encode(buffer);
         buffer.put_u8(if self.no_ack { 1 } else { 0 });
+    }
+}
+
+impl Decode<Arguments> for BasicGet {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, ticket) = match u16::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, queue_name) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let no_ack = if flags & (1 << 0) != 0 { true } else { false };
+        Ok((buffer, Arguments::BasicGet(BasicGet { ticket, queue_name, no_ack })))
     }
 }
 
@@ -179,13 +368,40 @@ pub struct BasicGetOk {
     message_count: u32
 }
 
-impl WriteToBuf for BasicGetOk {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicGetOk {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u64(self.delivery_tag);
         buffer.put_u8(if self.redelivered { 1 } else { 0 });
-        self.exchange_name.write_to_buf(buffer);
-        self.routing_key.write_to_buf(buffer);
+        self.exchange_name.encode(buffer);
+        self.routing_key.encode(buffer);
         buffer.put_u32(self.message_count);
+    }
+}
+
+impl Decode<Arguments> for BasicGetOk {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, delivery_tag) = match u64::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let redelivered = if flags & (1 << 0) != 0 { true } else { false };
+        let (buffer, exchange_name) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, routing_key) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, message_count) = match u32::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Arguments::BasicGetOk(BasicGetOk {delivery_tag, redelivered, exchange_name, routing_key, message_count})))
     }
 }
 
@@ -195,9 +411,19 @@ pub struct BasicGetEmpty {
     cluster_id: ShortStr
 }
 
-impl WriteToBuf for BasicGetEmpty {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
-        self.cluster_id.write_to_buf(buffer);
+impl Encode for BasicGetEmpty {
+    fn encode(&self, buffer: &mut BytesMut) {
+        self.cluster_id.encode(buffer);
+    }
+}
+
+impl Decode<Arguments> for BasicGetEmpty {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, cluster_id) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Arguments::BasicGetEmpty(BasicGetEmpty { cluster_id })))
     }
 }
 
@@ -208,10 +434,25 @@ pub struct BasicAck {
     multiple: bool
 }
 
-impl WriteToBuf for BasicAck {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicAck {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u64(self.delivery_tag);
         buffer.put_u8(if self.multiple { 1 } else { 0 });
+    }
+}
+
+impl Decode<Arguments> for BasicAck {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, delivery_tag) = match u64::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let multiple = if flags & (1 << 0) != 0 { true } else { false };
+        Ok((buffer, Arguments::BasicAck(BasicAck { delivery_tag, multiple })))
     }
 }
 
@@ -222,10 +463,25 @@ pub struct BasicReject {
     requeue: bool
 }
 
-impl WriteToBuf for BasicReject {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicReject {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u64(self.delivery_tag);
         buffer.put_u8(if self.requeue { 1 } else { 0 });
+    }
+}
+
+impl Decode<Arguments> for BasicReject {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, delivery_tag) = match u64::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let requeue = if flags & (1 << 0) != 0 { true } else { false };
+        Ok((buffer, Arguments::BasicReject(BasicReject { delivery_tag, requeue })))
     }
 }
 
@@ -235,9 +491,20 @@ pub struct BasicRecoverAsync {
     requeue: bool
 }
 
-impl WriteToBuf for BasicRecoverAsync {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicRecoverAsync {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(if self.requeue { 1 } else { 0 });
+    }
+}
+
+impl Decode<Arguments> for BasicRecoverAsync {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let requeue = if flags & (1 << 0) != 0 { true } else { false };
+        Ok((buffer, Arguments::BasicRecoverAsync(BasicRecoverAsync { requeue })))
     }
 }
 
@@ -247,17 +514,35 @@ pub struct BasicRecover {
     requeue: bool
 }
 
-impl WriteToBuf for BasicRecover {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicRecover {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(if self.requeue { 1 } else { 0 });
+    }
+}
+
+impl Decode<Arguments> for BasicRecover {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let requeue = if flags & (1 << 0) != 0 { true } else { false };
+        Ok((buffer, Arguments::BasicRecover(BasicRecover { requeue })))
     }
 }
 
 pub struct BasicRecoverOk;
 
-impl WriteToBuf for BasicRecoverOk {
+impl Encode for BasicRecoverOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for BasicRecoverOk {
+    #[inline]
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::BasicRecoverOk(BasicRecoverOk)))
     }
 }
 
@@ -269,8 +554,8 @@ pub struct BasicNack {
     requeue: bool
 }
 
-impl WriteToBuf for BasicNack {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicNack {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u64(self.delivery_tag);
         let mut flag = 0u8;
         flag |= if self.multiple { 1 } else { 0 };
@@ -279,6 +564,21 @@ impl WriteToBuf for BasicNack {
     }
 }
 
+impl Decode<Arguments> for BasicNack {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, delivery_tag) = match u64::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let multiple = if flags & (1 << 0) != 0 { true } else { false };
+        let requeue = if flags & (1 << 1) != 0 { true } else { false };
+        Ok((buffer, Arguments::BasicNack(BasicNack {delivery_tag, multiple, requeue })))
+    }
+}
 
 #[derive(Property, Default)]
 #[property(get(public), set(disable))]
@@ -372,19 +672,19 @@ impl BasicProperties {
     }
 }
 
-impl WriteToBuf for BasicProperties {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for BasicProperties {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.flags);
         if self.flags & BasicProperties::CONTENT_TYPE_FLAG != 0 {
-            self.content_type.write_to_buf(buffer);
+            self.content_type.encode(buffer);
         }
 
         if self.flags & BasicProperties::CONTENT_ENCODING_FLAG != 0 {
-            self.content_encoding.write_to_buf(buffer);
+            self.content_encoding.encode(buffer);
         }
 
         if self.flags & BasicProperties::HEADERS_FLAG != 0 {
-            self.headers.write_to_buf(buffer);
+            self.headers.encode(buffer);
         }
 
         if self.flags & BasicProperties::DELIVERY_FLAG != 0 {
@@ -396,19 +696,19 @@ impl WriteToBuf for BasicProperties {
         }
 
         if self.flags & BasicProperties::CORRELATION_ID_FLAG != 0 {
-            self.correlation_id.write_to_buf(buffer);
+            self.correlation_id.encode(buffer);
         }
 
         if self.flags & BasicProperties::REPLY_TO_FLAG != 0 {
-            self.reply_to.write_to_buf(buffer);
+            self.reply_to.encode(buffer);
         }
 
         if self.flags & BasicProperties::EXPIRATION_FLAG != 0 {
-            self.expiration.write_to_buf(buffer);
+            self.expiration.encode(buffer);
         }
 
         if self.flags & BasicProperties::MESSAGE_ID_FLAG != 0 {
-            self.message_id.write_to_buf(buffer);
+            self.message_id.encode(buffer);
         }
 
         if self.flags & BasicProperties::TIMESTAMP_FLAG != 0 {
@@ -416,20 +716,156 @@ impl WriteToBuf for BasicProperties {
         }
 
         if self.flags & BasicProperties::BASIC_TYPE_FLAG != 0 {
-            self.basic_type.write_to_buf(buffer);
+            self.basic_type.encode(buffer);
         }
 
         if self.flags & BasicProperties::USER_ID_FLAG != 0 {
-            self.user_id.write_to_buf(buffer);
+            self.user_id.encode(buffer);
         }
 
         if self.flags & BasicProperties::APP_ID_FLAG != 0 {
-            self.app_id.write_to_buf(buffer);
+            self.app_id.encode(buffer);
         }
 
         if self.flags & BasicProperties::CLUSTER_ID_FLAG != 0 {
-            self.cluster_id.write_to_buf(buffer);
+            self.cluster_id.encode(buffer);
         }
+    }
+}
+
+impl Decode<Property> for BasicProperties {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Property), FrameDecodeErr>{
+        let (buffer, flags) = match u32::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let mut properties = BasicProperties::default();
+        let buffer = if flags & BasicProperties::CONTENT_TYPE_FLAG != 0 {
+            let (buffer, content_type) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_content_type(content_type);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::CONTENT_ENCODING_FLAG != 0 {
+            let (buffer, content_encoding) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_content_encoding(content_encoding);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::HEADERS_FLAG != 0 {
+            let (buffer, headers) = match FieldTable::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_headers(headers);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::DELIVERY_FLAG != 0 {
+            let (buffer, delivery_mode) = match u8::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_delivery_mode(delivery_mode);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::PRIORITY_FLAG != 0 {
+            let (buffer, priority) = match u8::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_priority(priority);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::CORRELATION_ID_FLAG != 0 {
+            let (buffer, correlation_id) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_correlation_id(correlation_id);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::REPLY_TO_FLAG != 0 {
+            let (buffer, reply_to) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_reply_to(reply_to);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::EXPIRATION_FLAG != 0 {
+            let (buffer, expiration) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_expiration(expiration);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::MESSAGE_ID_FLAG != 0 {
+            let (buffer, message_id) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_message_id(message_id);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::TIMESTAMP_FLAG != 0 {
+            let (buffer, timestamp) = match u64::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_timestamp(timestamp);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::BASIC_TYPE_FLAG != 0 {
+            let (buffer, basic_type) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_basic_type(basic_type);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::USER_ID_FLAG != 0 {
+            let (buffer, user_id) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_user_id(user_id);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::APP_ID_FLAG != 0 {
+            let (buffer, app_id) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_app_id(app_id);
+            buffer
+        } else { buffer };
+
+        let buffer = if flags & BasicProperties::CLUSTER_ID_FLAG != 0 {
+            let (buffer, cluster_id) = match ShortStr::decode(buffer) {
+                Ok(ret) => ret,
+                Err(e) => return Err(e)
+            };
+            properties.set_cluster_id(cluster_id);
+            buffer
+        } else { buffer };
+        Ok((buffer, Property::Basic(properties)))
     }
 }
 

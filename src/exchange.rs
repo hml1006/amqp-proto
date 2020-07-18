@@ -1,7 +1,9 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
 use crate::{ShortStr, FieldTable};
-use crate::common::{WriteToBuf, MethodId};
+use crate::common::{Encode, MethodId, Decode};
+use crate::frame::{Arguments, Property};
+use crate::error::FrameDecodeErr;
 
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
@@ -17,11 +19,11 @@ pub struct ExchangeDeclare {
     args: FieldTable
 }
 
-impl WriteToBuf for ExchangeDeclare {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for ExchangeDeclare {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.exchange_name.write_to_buf(buffer);
-        self.exchange_type.write_to_buf(buffer);
+        self.exchange_name.encode(buffer);
+        self.exchange_type.encode(buffer);
         let mut flag = 0u8;
         flag |= if self.passive { 1 } else { 0 };
         flag |= if self.durable { 1 << 1 } else { 0 };
@@ -29,15 +31,52 @@ impl WriteToBuf for ExchangeDeclare {
         flag |= if self.internal { 1 << 3 } else { 0 };
         flag |= if self.no_wait { 1 << 4 } else { 0 };
         buffer.put_u8(flag);
-        self.args.write_to_buf(buffer);
+        self.args.encode(buffer);
+    }
+}
+
+impl Decode<Arguments> for ExchangeDeclare {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, ticket) = match u16::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, exchange_name) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, exchange_type) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let passive = if flags & (1 << 0) != 0 { true } else { false };
+        let durable = if flags & (1 << 1) != 0 { true } else { false };
+        let auto_delete = if flags & (1 << 2) != 0 { true } else { false };
+        let internal = if flags & (1 << 3) != 0 { true } else { false };
+        let no_wait = if flags & (1 << 4) != 0 { true } else { false };
+        let (buffer, args) = match FieldTable::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Arguments::ExchangeDeclare(ExchangeDeclare { ticket, exchange_name, exchange_type, passive, durable, auto_delete, internal, no_wait, args})))
     }
 }
 
 pub struct ExchangeDeclareOk;
 
-impl WriteToBuf for ExchangeDeclareOk {
+impl Encode for ExchangeDeclareOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for ExchangeDeclareOk {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::ExchangeDeclareOk(ExchangeDeclareOk)))
     }
 }
 
@@ -50,10 +89,10 @@ pub struct ExchangeDelete {
     no_wait: bool
 }
 
-impl WriteToBuf for ExchangeDelete {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for ExchangeDelete {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.exchange_name.write_to_buf(buffer);
+        self.exchange_name.encode(buffer);
         let mut flag = 0u8;
         flag |= if self.if_unused { 1 } else { 0 };
         flag |= if self.no_wait { 1 << 1 } else { 0};
@@ -61,11 +100,37 @@ impl WriteToBuf for ExchangeDelete {
     }
 }
 
+impl Decode<Arguments> for ExchangeDelete {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, ticket) = match u16::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, exchange_name) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let if_unused = if flags & (1 << 0) != 0 { true } else { false };
+        let no_wait = if flags & (1 << 1) != 0 { true } else { false };
+        Ok((buffer, Arguments::ExchangeDelete(ExchangeDelete { ticket, exchange_name, if_unused, no_wait })))
+    }
+}
+
 pub struct ExchangeDeleteOk;
 
-impl WriteToBuf for ExchangeDeleteOk {
+impl Encode for ExchangeDeleteOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for ExchangeDeleteOk {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::ExchangeDeleteOk(ExchangeDeleteOk)))
     }
 }
 
@@ -80,22 +145,60 @@ pub struct ExchangeBind {
     args: FieldTable
 }
 
-impl WriteToBuf for ExchangeBind {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for ExchangeBind {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.destination.write_to_buf(buffer);
-        self.source.write_to_buf(buffer);
-        self.routing_key.write_to_buf(buffer);
+        self.destination.encode(buffer);
+        self.source.encode(buffer);
+        self.routing_key.encode(buffer);
         buffer.put_u8(if self.no_wait { 1 } else { 0});
-        self.args.write_to_buf(buffer);
+        self.args.encode(buffer);
+    }
+}
+
+impl Decode<Arguments> for ExchangeBind {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, ticket) = match u16::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, destination) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, source) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, routing_key) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let no_wait = if flags & (1 << 0) != 0 { true } else { false };
+        let (buffer, args) = match FieldTable::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Arguments::ExchangeBind(ExchangeBind { ticket, destination, source, routing_key, no_wait, args })))
     }
 }
 
 pub struct ExchangeBindOk;
 
-impl WriteToBuf for ExchangeBindOk {
+impl Encode for ExchangeBindOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for ExchangeBindOk {
+    #[inline]
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::ExchangeBindOk(ExchangeBindOk)))
     }
 }
 
@@ -110,22 +213,59 @@ pub struct ExchangeUnbind {
     args: FieldTable
 }
 
-impl WriteToBuf for ExchangeUnbind {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for ExchangeUnbind {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.destination.write_to_buf(buffer);
-        self.source.write_to_buf(buffer);
-        self.routing_key.write_to_buf(buffer);
+        self.destination.encode(buffer);
+        self.source.encode(buffer);
+        self.routing_key.encode(buffer);
         buffer.put_u8(if self.no_wait { 1 } else { 0});
-        self.args.write_to_buf(buffer);
+        self.args.encode(buffer);
+    }
+}
+
+impl Decode<Arguments> for ExchangeUnbind {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, ticket) = match u16::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, destination) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, source) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, routing_key) = match ShortStr::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let no_wait = if flags & (1 << 0) != 0 { true } else { false };
+        let (buffer, args) = match FieldTable::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Arguments::ExchangeUnbind(ExchangeUnbind { ticket, destination, source, routing_key, no_wait, args })))
     }
 }
 
 pub struct ExchangeUnbindOk;
 
-impl WriteToBuf for ExchangeUnbindOk {
+impl Encode for ExchangeUnbindOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for ExchangeUnbindOk {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::ExchangeUnbindOk(ExchangeUnbindOk)))
     }
 }
 
@@ -135,13 +275,22 @@ pub struct ExchangeProperties {
     flags: u32,
 }
 
-impl WriteToBuf for ExchangeProperties {
+impl Encode for ExchangeProperties {
     #[inline]
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.flags);
     }
 }
 
+impl Decode<Property> for ExchangeProperties {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Property), FrameDecodeErr>{
+        let (buffer, flags) = match u32::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Property::Exchange(ExchangeProperties { flags })))
+    }
+}
 
 pub enum ExchangeMethod {
     Declare,

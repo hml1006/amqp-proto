@@ -1,52 +1,52 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
-use crate::common::{WriteToBuf, MethodId};
+use crate::common::{Encode, MethodId};
 
 pub struct TxSelect;
 
-impl WriteToBuf for TxSelect {
+impl Encode for TxSelect {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
     }
 }
 
 pub struct TxSelectOk;
 
-impl WriteToBuf for TxSelectOk {
+impl Encode for TxSelectOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
     }
 }
 
 pub struct TxCommit;
 
-impl WriteToBuf for TxCommit {
+impl Encode for TxCommit {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
     }
 }
 
 pub struct TxCommitOk;
 
-impl WriteToBuf for TxCommitOk {
+impl Encode for TxCommitOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
     }
 }
 
 pub struct TxRollback;
 
-impl WriteToBuf for TxRollback {
+impl Encode for TxRollback {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
     }
 }
 
 pub struct TxRollbackOk;
 
-impl WriteToBuf for TxRollbackOk {
+impl Encode for TxRollbackOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
     }
 }
 
@@ -56,8 +56,8 @@ pub struct TxProperties {
     flags: u32,
 }
 
-impl WriteToBuf for TxProperties {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for TxProperties {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.flags);
     }
 }

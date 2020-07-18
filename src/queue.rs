@@ -1,7 +1,7 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
 use crate::{ShortStr, FieldTable};
-use crate::common::{WriteToBuf, MethodId};
+use crate::common::{Encode, MethodId};
 
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
@@ -16,10 +16,10 @@ pub struct QueueDeclare {
     args: FieldTable
 }
 
-impl WriteToBuf for QueueDeclare {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for QueueDeclare {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.queue_name.write_to_buf(buffer);
+        self.queue_name.encode(buffer);
         let mut flag = 0u8;
         flag |= if self.passive { 1 } else { 0 };
         flag |= if self.durable { 1 << 1 } else { 0};
@@ -27,7 +27,7 @@ impl WriteToBuf for QueueDeclare {
         flag |= if self.auto_delete { 1 << 3 } else { 0 };
         flag |= if self.no_wait { 1 << 4 } else { 0 };
         buffer.put_u8(flag);
-        self.args.write_to_buf(buffer);
+        self.args.encode(buffer);
     }
 }
 
@@ -39,9 +39,9 @@ pub struct QueueDeclareOk {
     consumer_count: u32
 }
 
-impl WriteToBuf for QueueDeclareOk {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
-        self.queue_name.write_to_buf(buffer);
+impl Encode for QueueDeclareOk {
+    fn encode(&self, buffer: &mut BytesMut) {
+        self.queue_name.encode(buffer);
         buffer.put_u32(self.message_count);
         buffer.put_u32(self.consumer_count);
     }
@@ -58,22 +58,22 @@ pub struct QueueBind {
     args: FieldTable
 }
 
-impl WriteToBuf for QueueBind {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for QueueBind {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.queue_name.write_to_buf(buffer);
-        self.exchange_name.write_to_buf(buffer);
-        self.routing_key.write_to_buf(buffer);
+        self.queue_name.encode(buffer);
+        self.exchange_name.encode(buffer);
+        self.routing_key.encode(buffer);
         buffer.put_u8(if self.no_wait { 1 } else { 0 });
-        self.args.write_to_buf(buffer);
+        self.args.encode(buffer);
     }
 }
 
 pub struct QueueBindOk;
 
-impl WriteToBuf for QueueBindOk {
+impl Encode for QueueBindOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
     }
 }
 
@@ -85,10 +85,10 @@ pub struct QueuePurge {
     no_wait: bool
 }
 
-impl WriteToBuf for QueuePurge {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for QueuePurge {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.queue_name.write_to_buf(buffer);
+        self.queue_name.encode(buffer);
         buffer.put_u8(if self.no_wait { 1 } else { 0 });
     }
 }
@@ -99,8 +99,8 @@ pub struct QueuePurgeOk {
     message_count: u32
 }
 
-impl WriteToBuf for QueuePurgeOk {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for QueuePurgeOk {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.message_count);
     }
 }
@@ -115,10 +115,10 @@ pub struct QueueDelete {
     no_wait: bool
 }
 
-impl WriteToBuf for QueueDelete {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for QueueDelete {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.queue_name.write_to_buf(buffer);
+        self.queue_name.encode(buffer);
         let mut flag = 0u8;
         flag |= if self.if_unused { 1 } else { 0};
         flag |= if self.if_empty { 1 << 1 } else { 0 };
@@ -133,8 +133,8 @@ pub struct QueueDeleteOk {
     message_count: u32
 }
 
-impl WriteToBuf for QueueDeleteOk {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for QueueDeleteOk {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.message_count);
     }
 }
@@ -149,21 +149,21 @@ pub struct QueueUnbind {
     args: FieldTable
 }
 
-impl WriteToBuf for QueueUnbind {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for QueueUnbind {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.ticket);
-        self.queue_name.write_to_buf(buffer);
-        self.exchange_name.write_to_buf(buffer);
-        self.routing_key.write_to_buf(buffer);
-        self.args.write_to_buf(buffer);
+        self.queue_name.encode(buffer);
+        self.exchange_name.encode(buffer);
+        self.routing_key.encode(buffer);
+        self.args.encode(buffer);
     }
 }
 
 pub struct QueueUnbindOk;
 
-impl WriteToBuf for QueueUnbindOk {
+impl Encode for QueueUnbindOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
     }
 }
 
@@ -173,8 +173,8 @@ pub struct QueueProperties {
     flags: u32,
 }
 
-impl WriteToBuf for QueueProperties {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for QueueProperties {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.flags);
     }
 }

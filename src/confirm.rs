@@ -1,6 +1,8 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
-use crate::common::{WriteToBuf, MethodId};
+use crate::common::{Encode, MethodId, Decode};
+use crate::frame::{Arguments, Property};
+use crate::error::FrameDecodeErr;
 
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
@@ -8,17 +10,34 @@ pub struct ConfirmSelect {
     no_wait: bool
 }
 
-impl WriteToBuf for ConfirmSelect {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for ConfirmSelect {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(if self.no_wait { 1 } else { 0 });
+    }
+}
+
+impl Decode<Arguments> for ConfirmSelect {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        let (buffer, flags) = match u8::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        let no_wait = if flags & (1 << 0) != 0 { true } else { false };
+        Ok((buffer, Arguments::ConfirmSelect(ConfirmSelect { no_wait })))
     }
 }
 
 pub struct ConfirmSelectOk;
 
-impl WriteToBuf for ConfirmSelectOk {
+impl Encode for ConfirmSelectOk {
     #[inline]
-    fn write_to_buf(&self, _: &mut BytesMut) {
+    fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for ConfirmSelectOk {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::ConfirmSelectOk(ConfirmSelectOk)))
     }
 }
 
@@ -28,13 +47,22 @@ pub struct ConfirmProperties {
     flags: u32,
 }
 
-impl WriteToBuf for ConfirmProperties {
+impl Encode for ConfirmProperties {
     #[inline]
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.flags);
     }
 }
 
+impl Decode<Property> for ConfirmProperties {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Property), FrameDecodeErr>{
+        let (buffer, flags) = match u32::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Property::Confirm(ConfirmProperties { flags })))
+    }
+}
 
 pub enum ConfirmMethod {
     Select,

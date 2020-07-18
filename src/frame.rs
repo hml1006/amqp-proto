@@ -1,6 +1,6 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
-use crate::common::{WriteToBuf, MethodId, Class, Method};
+use crate::common::{Encode, MethodId, Class, Method};
 use crate::connection::{ConnectionClose, ConnectionCloseOk, ConnectionOpenOk, ConnectionOpen, ConnectionTuneOk, ConnectionTune, ConnectionSecureOk, ConnectionSecure, ConnectionStartOk, ConnectionStart, ConnectionProperties};
 use crate::tx::{TxRollbackOk, TxRollback, TxCommitOk, TxCommit, TxSelectOk, TxSelect, TxProperties};
 use crate::basic::{BasicNack, BasicRecoverOk, BasicRecover, BasicRecoverAsync, BasicReject, BasicAck, BasicGetEmpty, BasicGetOk, BasicGet, BasicDeliver, BasicReturn, BasicPublish, BasicCancelOk, BasicCancel, BasicConsumeOk, BasicConsume, BasicQosOk, BasicQos, BasicProperties};
@@ -65,8 +65,8 @@ pub struct ProtocolHeader {
     minor_version: u8
 }
 
-impl WriteToBuf for ProtocolHeader {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for ProtocolHeader {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.extend_from_slice(&self.protocol);
         buffer.put_u8(self.major_id);
         buffer.put_u8(self.minor_id);
@@ -104,17 +104,17 @@ impl Default for Property {
     }
 }
 
-impl WriteToBuf for Property {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for Property {
+    fn encode(&self, buffer: &mut BytesMut) {
         match self {
-            Property::Connection(properties) => properties.write_to_buf(buffer),
-            Property::Channel(properties) => properties.write_to_buf(buffer),
-            Property::Access(properties) => properties.write_to_buf(buffer),
-            Property::Exchange(properties) => properties.write_to_buf(buffer),
-            Property::Queue(properties) => properties.write_to_buf(buffer),
-            Property::Basic(properties) => properties.write_to_buf(buffer),
-            Property::Tx(properties) => properties.write_to_buf(buffer),
-            Property::Confirm(properties) => properties.write_to_buf(buffer)
+            Property::Connection(properties) => properties.encode(buffer),
+            Property::Channel(properties) => properties.encode(buffer),
+            Property::Access(properties) => properties.encode(buffer),
+            Property::Exchange(properties) => properties.encode(buffer),
+            Property::Queue(properties) => properties.encode(buffer),
+            Property::Basic(properties) => properties.encode(buffer),
+            Property::Tx(properties) => properties.encode(buffer),
+            Property::Confirm(properties) => properties.encode(buffer)
         }
     }
 }
@@ -191,78 +191,78 @@ pub enum Arguments {
     ConfirmSelectOk(ConfirmSelectOk)
 }
 
-impl WriteToBuf for Arguments {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for Arguments {
+    fn encode(&self, buffer: &mut BytesMut) {
         match self {
-            Arguments::ConnectionStart(args) => args.write_to_buf(buffer),
-            Arguments::ConnectionStartOk(args) => args.write_to_buf(buffer),
-            Arguments::ConnectionSecure(args) => args.write_to_buf(buffer),
-            Arguments::ConnectionSecureOk(args) => args.write_to_buf(buffer),
-            Arguments::ConnectionTune(args) => args.write_to_buf(buffer),
-            Arguments::ConnectionTuneOk(args) => args.write_to_buf(buffer),
-            Arguments::ConnectionOpen(args) => args.write_to_buf(buffer),
-            Arguments::ConnectionOpenOk(args) => args.write_to_buf(buffer),
-            Arguments::ConnectionClose(args) => args.write_to_buf(buffer),
-            Arguments::ConnectionCloseOk(args) => args.write_to_buf(buffer),
+            Arguments::ConnectionStart(args) => args.encode(buffer),
+            Arguments::ConnectionStartOk(args) => args.encode(buffer),
+            Arguments::ConnectionSecure(args) => args.encode(buffer),
+            Arguments::ConnectionSecureOk(args) => args.encode(buffer),
+            Arguments::ConnectionTune(args) => args.encode(buffer),
+            Arguments::ConnectionTuneOk(args) => args.encode(buffer),
+            Arguments::ConnectionOpen(args) => args.encode(buffer),
+            Arguments::ConnectionOpenOk(args) => args.encode(buffer),
+            Arguments::ConnectionClose(args) => args.encode(buffer),
+            Arguments::ConnectionCloseOk(args) => args.encode(buffer),
 
-            Arguments::ChannelOpen(args) => args.write_to_buf(buffer),
-            Arguments::ChannelOpenOk(args) => args.write_to_buf(buffer),
-            Arguments::ChannelFlow(args) => args.write_to_buf(buffer),
-            Arguments::ChannelFlowOk(args) => args.write_to_buf(buffer),
-            Arguments::ChannelClose(args) => args.write_to_buf(buffer),
-            Arguments::ChannelCloseOk(args) => args.write_to_buf(buffer),
+            Arguments::ChannelOpen(args) => args.encode(buffer),
+            Arguments::ChannelOpenOk(args) => args.encode(buffer),
+            Arguments::ChannelFlow(args) => args.encode(buffer),
+            Arguments::ChannelFlowOk(args) => args.encode(buffer),
+            Arguments::ChannelClose(args) => args.encode(buffer),
+            Arguments::ChannelCloseOk(args) => args.encode(buffer),
 
-            Arguments::AccessRequest(args) => args.write_to_buf(buffer),
-            Arguments::AccessRequestOk(args) => args.write_to_buf(buffer),
+            Arguments::AccessRequest(args) => args.encode(buffer),
+            Arguments::AccessRequestOk(args) => args.encode(buffer),
 
-            Arguments::ExchangeDeclare(args) => args.write_to_buf(buffer),
-            Arguments::ExchangeDeclareOk(args) => args.write_to_buf(buffer),
-            Arguments::ExchangeDelete(args) => args.write_to_buf(buffer),
-            Arguments::ExchangeDeleteOk(args) => args.write_to_buf(buffer),
-            Arguments::ExchangeBind(args) => args.write_to_buf(buffer),
-            Arguments::ExchangeBindOk(args) => args.write_to_buf(buffer),
-            Arguments::ExchangeUnbind(args) => args.write_to_buf(buffer),
-            Arguments::ExchangeUnbindOk(args) => args.write_to_buf(buffer),
+            Arguments::ExchangeDeclare(args) => args.encode(buffer),
+            Arguments::ExchangeDeclareOk(args) => args.encode(buffer),
+            Arguments::ExchangeDelete(args) => args.encode(buffer),
+            Arguments::ExchangeDeleteOk(args) => args.encode(buffer),
+            Arguments::ExchangeBind(args) => args.encode(buffer),
+            Arguments::ExchangeBindOk(args) => args.encode(buffer),
+            Arguments::ExchangeUnbind(args) => args.encode(buffer),
+            Arguments::ExchangeUnbindOk(args) => args.encode(buffer),
 
-            Arguments::QueueDeclare(args) => args.write_to_buf(buffer),
-            Arguments::QueueDeclareOk(args) => args.write_to_buf(buffer),
-            Arguments::QueueBind(args) => args.write_to_buf(buffer),
-            Arguments::QueueBindOk(args) => args.write_to_buf(buffer),
-            Arguments::QueueUnbind(args) => args.write_to_buf(buffer),
-            Arguments::QueueUnbindOk(args) => args.write_to_buf(buffer),
-            Arguments::QueuePurge(args) => args.write_to_buf(buffer),
-            Arguments::QueuePurgeOk(args) => args.write_to_buf(buffer),
-            Arguments::QueueDelete(args) => args.write_to_buf(buffer),
-            Arguments::QueueDeleteOk(args) => args.write_to_buf(buffer),
+            Arguments::QueueDeclare(args) => args.encode(buffer),
+            Arguments::QueueDeclareOk(args) => args.encode(buffer),
+            Arguments::QueueBind(args) => args.encode(buffer),
+            Arguments::QueueBindOk(args) => args.encode(buffer),
+            Arguments::QueueUnbind(args) => args.encode(buffer),
+            Arguments::QueueUnbindOk(args) => args.encode(buffer),
+            Arguments::QueuePurge(args) => args.encode(buffer),
+            Arguments::QueuePurgeOk(args) => args.encode(buffer),
+            Arguments::QueueDelete(args) => args.encode(buffer),
+            Arguments::QueueDeleteOk(args) => args.encode(buffer),
 
-            Arguments::BasicQos(args) => args.write_to_buf(buffer),
-            Arguments::BasicQosOk(args) => args.write_to_buf(buffer),
-            Arguments::BasicConsume(args) => args.write_to_buf(buffer),
-            Arguments::BasicConsumeOk(args) => args.write_to_buf(buffer),
-            Arguments::BasicCancel(args) => args.write_to_buf(buffer),
-            Arguments::BasicCancelOk(args) => args.write_to_buf(buffer),
-            Arguments::BasicPublish(args) => args.write_to_buf(buffer),
-            Arguments::BasicDeliver(args) => args.write_to_buf(buffer),
-            Arguments::BasicReturn(args) => args.write_to_buf(buffer),
-            Arguments::BasicGet(args) => args.write_to_buf(buffer),
-            Arguments::BasicGetOk(args) => args.write_to_buf(buffer),
-            Arguments::BasicGetEmpty(args) => args.write_to_buf(buffer),
-            Arguments::BasicAck(args) => args.write_to_buf(buffer),
-            Arguments::BasicReject(args) => args.write_to_buf(buffer),
-            Arguments::BasicRecoverAsync(args) => args.write_to_buf(buffer),
-            Arguments::BasicRecover(args) => args.write_to_buf(buffer),
-            Arguments::BasicRecoverOk(args) => args.write_to_buf(buffer),
-            Arguments::BasicNack(args) => args.write_to_buf(buffer),
+            Arguments::BasicQos(args) => args.encode(buffer),
+            Arguments::BasicQosOk(args) => args.encode(buffer),
+            Arguments::BasicConsume(args) => args.encode(buffer),
+            Arguments::BasicConsumeOk(args) => args.encode(buffer),
+            Arguments::BasicCancel(args) => args.encode(buffer),
+            Arguments::BasicCancelOk(args) => args.encode(buffer),
+            Arguments::BasicPublish(args) => args.encode(buffer),
+            Arguments::BasicDeliver(args) => args.encode(buffer),
+            Arguments::BasicReturn(args) => args.encode(buffer),
+            Arguments::BasicGet(args) => args.encode(buffer),
+            Arguments::BasicGetOk(args) => args.encode(buffer),
+            Arguments::BasicGetEmpty(args) => args.encode(buffer),
+            Arguments::BasicAck(args) => args.encode(buffer),
+            Arguments::BasicReject(args) => args.encode(buffer),
+            Arguments::BasicRecoverAsync(args) => args.encode(buffer),
+            Arguments::BasicRecover(args) => args.encode(buffer),
+            Arguments::BasicRecoverOk(args) => args.encode(buffer),
+            Arguments::BasicNack(args) => args.encode(buffer),
 
-            Arguments::TxSelect(args) => args.write_to_buf(buffer),
-            Arguments::TxSelectOk(args) => args.write_to_buf(buffer),
-            Arguments::TxCommit(args) => args.write_to_buf(buffer),
-            Arguments::TxCommitOk(args) => args.write_to_buf(buffer),
-            Arguments::TxRollback(args) => args.write_to_buf(buffer),
-            Arguments::TxRollbackOk(args) => args.write_to_buf(buffer),
+            Arguments::TxSelect(args) => args.encode(buffer),
+            Arguments::TxSelectOk(args) => args.encode(buffer),
+            Arguments::TxCommit(args) => args.encode(buffer),
+            Arguments::TxCommitOk(args) => args.encode(buffer),
+            Arguments::TxRollback(args) => args.encode(buffer),
+            Arguments::TxRollbackOk(args) => args.encode(buffer),
 
-            Arguments::ConfirmSelect(args) => args.write_to_buf(buffer),
-            Arguments::ConfirmSelectOk(args) => args.write_to_buf(buffer)
+            Arguments::ConfirmSelect(args) => args.encode(buffer),
+            Arguments::ConfirmSelectOk(args) => args.encode(buffer)
         }
     }
 }
@@ -281,11 +281,11 @@ pub struct MethodPayload {
     args: Arguments
 }
 
-impl WriteToBuf for MethodPayload {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for MethodPayload {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.class.class_id());
         buffer.put_u16(self.method.method_id());
-        self.args.write_to_buf(buffer);
+        self.args.encode(buffer);
     }
 }
 
@@ -298,12 +298,12 @@ pub struct ContentHeaderPayload {
     properties: Property
 }
 
-impl WriteToBuf for ContentHeaderPayload {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for ContentHeaderPayload {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.class.class_id());
         buffer.put_u16(self.weight);
         buffer.put_u64(self.body_size);
-        self.properties.write_to_buf(buffer);
+        self.properties.encode(buffer);
     }
 }
 
@@ -313,8 +313,8 @@ pub struct ContentBodyPayload {
     payload: Vec<u8>,
 }
 
-impl WriteToBuf for ContentBodyPayload {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for ContentBodyPayload {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.extend_from_slice(&self.payload);
     }
 }
@@ -331,12 +331,12 @@ impl Default for Payload {
     }
 }
 
-impl WriteToBuf for Payload {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for Payload {
+    fn encode(&self, buffer: &mut BytesMut) {
         match self {
-            Payload::Method(method) => method.write_to_buf(buffer),
-            Payload::ContentHeader(content_header) => content_header.write_to_buf(buffer),
-            Payload::ContentBody(content_body) => content_body.write_to_buf(buffer)
+            Payload::Method(method) => method.encode(buffer),
+            Payload::ContentHeader(content_header) => content_header.encode(buffer),
+            Payload::ContentBody(content_body) => content_body.encode(buffer)
         }
     }
 }
@@ -351,12 +351,12 @@ pub struct Frame {
     payload: Payload,
 }
 
-impl WriteToBuf for Frame {
-    fn write_to_buf(&self, buffer: &mut BytesMut) {
+impl Encode for Frame {
+    fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(self.frame_type.frame_type_id());
         buffer.put_u16(self.channel);
         buffer.put_u32(self.length);
-        self.payload.write_to_buf(buffer);
+        self.payload.encode(buffer);
         buffer.put_u8(FRAME_END);
     }
 }

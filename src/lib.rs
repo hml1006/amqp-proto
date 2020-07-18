@@ -21,8 +21,8 @@ mod tests {
     use crate::{ShortStr, LongStr, Decimal, FieldValue, FieldTable};
     use bytes::{BytesMut, BufMut};
     use std::borrow::BorrowMut;
-    use crate::error::AmqpErrorKind;
-    use crate::common::{WriteToBuf, FieldName, FieldArray};
+    use crate::error::FrameDecodeErr;
+    use crate::common::{Encode, FieldName, FieldArray};
     use crate::connection::ConnectionStart;
 
     #[test]
@@ -39,7 +39,7 @@ mod tests {
         let short_str = ShortStr::with_bytes(b"hello");
         let ret = [0x5u8, b'h', b'e', b'l', b'l', b'o'];
         let mut buf = BytesMut::with_capacity(32);
-        short_str.unwrap().write_to_buf(buf.borrow_mut());
+        short_str.unwrap().encode(buf.borrow_mut());
         assert_eq!(&buf[..], ret);
 
         let mut tmp = String::new();
@@ -48,8 +48,8 @@ mod tests {
         }
 
         let short_str = ShortStr::with_bytes(tmp.as_bytes());
-        let ret = match short_str.err().unwrap().kind() {
-            AmqpErrorKind::SyntaxError => true,
+        let ret = match short_str.err().unwrap(){
+            FrameDecodeErr::DecodeShortStrTooLarge => true,
             _ => false
         };
         assert!(ret);
@@ -61,7 +61,7 @@ mod tests {
         let ret = [0x0u8, 0x0u8, 0x0u8, 0x5u8, b'h', b'e', b'l', b'l', b'o'];
 
         let mut buf = BytesMut::with_capacity(32);
-        long_str.unwrap().write_to_buf(buf.borrow_mut());
+        long_str.unwrap().encode(buf.borrow_mut());
         assert_eq!(&buf[..], ret);
 
         let mut tmp = String::new();
@@ -69,8 +69,8 @@ mod tests {
             tmp.push_str("aaaabbbb");
         }
         let long_str = LongStr::with_bytes(tmp.as_bytes());
-        let ret = match long_str.err().unwrap().kind() {
-            AmqpErrorKind::SyntaxError => true,
+        let ret = match long_str.err().unwrap() {
+            FrameDecodeErr::DecodeLongStrTooLarge => true,
             _ => false
         };
         assert!(ret);
@@ -82,7 +82,7 @@ mod tests {
         let ret = [1u8, 0x12u8, 0x34u8, 0x56u8, 0x78u8];
 
         let mut buf = BytesMut::with_capacity(32);
-        decimal.write_to_buf(buf.borrow_mut());
+        decimal.encode(buf.borrow_mut());
         assert_eq!(&buf[..], ret);
     }
 
@@ -91,7 +91,7 @@ mod tests {
         let field_name = FieldName::with_bytes(b"hello");
         let mut buf = BytesMut::with_capacity(32);
 
-        field_name.unwrap().write_to_buf(buf.borrow_mut());
+        field_name.unwrap().encode(buf.borrow_mut());
         let ret = [0x5u8, b'h', b'e', b'l', b'l', b'o'];
         assert_eq!(&buf[..], ret);
 
@@ -100,15 +100,15 @@ mod tests {
             tmp.push_str("aaaaabbbbb");
         }
         let field_name = FieldName::with_bytes(tmp.as_bytes());
-        let ret = match field_name.err().unwrap().kind() {
-            AmqpErrorKind::SyntaxError => true,
+        let ret = match field_name.err().unwrap() {
+            FrameDecodeErr::DecodeFieldNameTooLarge => true,
             _ => false
         };
         assert!(ret);
 
         let field_name = FieldName::with_bytes(b"1ello");
-        let ret = match field_name.err().unwrap().kind() {
-            AmqpErrorKind::SyntaxError => true,
+        let ret = match field_name.err().unwrap() {
+            FrameDecodeErr::DecodeFieldNameStartCharWrong => true,
             _ => false
         };
         assert!(ret);
@@ -119,25 +119,25 @@ mod tests {
         let mut buf = BytesMut::with_capacity(8);
         let value = FieldValue::from_bool(true);
         let ret = [b't', 0x1u8];
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], ret);
 
         let value = FieldValue::from_bool(false);
         let ret = [b't', 0x0u8];
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], ret);
 
         let value = FieldValue::from_i8(-0x1i8);
         let ret: [u8; 2] = [b'b' as u8, -0x1i8 as u8];
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], ret);
 
         let value = FieldValue::from_u8(0x1u8);
         let ret = [b'B', 0x1u8];
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], ret);
 
         let value = FieldValue::from_i16(-0x1234i16);
@@ -145,7 +145,7 @@ mod tests {
         ret.put_u8(b's');
         ret.put_i16(-0x1234i16);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_u16(0x1234u16);
@@ -153,7 +153,7 @@ mod tests {
         ret.put_u8(b'u');
         ret.put_u16(0x1234u16);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_i32(-0x1i32);
@@ -161,7 +161,7 @@ mod tests {
         ret.put_u8(b'I');
         ret.put_i32(-0x1i32);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_u32(0x12345678u32);
@@ -169,7 +169,7 @@ mod tests {
         ret.put_u8(b'i');
         ret.put_u32(0x12345678u32);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_i64(-0x12345678i64);
@@ -177,7 +177,7 @@ mod tests {
         ret.put_u8(b'l');
         ret.put_i64(-0x12345678i64);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_u64(0x12345678u64);
@@ -185,7 +185,7 @@ mod tests {
         ret.put_u8(b'L');
         ret.put_u64(0x12345678u64);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_f32(12345678.12f32);
@@ -193,7 +193,7 @@ mod tests {
         ret.put_u8(b'f');
         ret.put_f32(12345678.12f32);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_f64(12345678.12f64);
@@ -201,7 +201,7 @@ mod tests {
         ret.put_u8(b'd');
         ret.put_f64(12345678.12f64);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_timestamp(0x12345678u64);
@@ -209,7 +209,7 @@ mod tests {
         ret.put_u8(b'T');
         ret.put_u64(0x12345678u64);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_decimal(Decimal::new(2, 0x12345678u32));
@@ -218,7 +218,7 @@ mod tests {
         ret.put_u8(2u8);
         ret.put_u32(0x12345678u32);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_long_string(LongStr::with_bytes(b"hello").unwrap());
@@ -227,7 +227,7 @@ mod tests {
         ret.put_u32(0x5u32);
         ret.put_slice(b"hello");
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let mut array = FieldArray::new();
@@ -245,7 +245,7 @@ mod tests {
         ret.put_u32(0x5u32);
         ret.put_slice(b"hello");
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let mut table = FieldTable::new();
@@ -270,7 +270,7 @@ mod tests {
         }
         let value = FieldValue::from_field_table(table);
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_bytes_array(LongStr::with_bytes(b"hello").unwrap());
@@ -279,13 +279,13 @@ mod tests {
         ret.put_u32(0x5u32);
         ret.put_slice(b"hello");
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], &ret[..]);
 
         let value = FieldValue::from_void();
         let ret = [b'V'];
         buf.clear();
-        value.write_to_buf(buf.borrow_mut());
+        value.encode(buf.borrow_mut());
         assert_eq!(&buf[..], ret)
     }
 }
