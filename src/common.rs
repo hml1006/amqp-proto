@@ -35,6 +35,21 @@ pub trait Decode<T> {
     fn decode(buffer: &[u8]) -> Result<(&[u8], T), FrameDecodeErr>;
 }
 
+// impl Encode for primitive types
+macro_rules! encode_impl_for_primitive {
+    ($($t:ty)*) => {$(
+        paste::item! {
+            impl Encode for $t {
+                #[inline]
+                fn encode(&self, buffer: &mut BytesMut) {
+                    buffer.[<put_ $t>](*self);
+                }
+            }
+        }
+    )*}
+}
+encode_impl_for_primitive!(u8 i8 u16 i16 u32 i32 u64 i64 f32 f64);
+
 // impl for primitive types
 macro_rules! decode_impl_for_primitive {
     ($($t:ty)*) => {$(
@@ -52,8 +67,8 @@ macro_rules! decode_impl_for_primitive {
                             }
                         }
                     }
+                }
             }
-        }
         }
     )*}
 }
@@ -716,7 +731,7 @@ impl Default for Method {
     }
 }
 
-pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, FrameDecodeErr> {
+pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, FriameDecodeErr> {
     match class {
         Class::Connection => {
             let method = ConnectionMethod::from(method_id);
