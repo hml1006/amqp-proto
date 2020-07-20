@@ -700,45 +700,45 @@ impl Default for Class {
 
 
 pub enum Method {
-    ConnectionMethod(ConnectionMethod),
-    ChannelMethod(ChannelMethod),
-    AccessMethod(AccessMethod),
-    ExchangeMethod(ExchangeMethod),
-    QueueMethod(QueueMethod),
-    BasicMethod(BasicMethod),
-    ConfirmMethod(ConfirmMethod),
-    TxMethod(TxMethod)
+    Connection(ConnectionMethod),
+    Channel(ChannelMethod),
+    Access(AccessMethod),
+    Exchange(ExchangeMethod),
+    Queue(QueueMethod),
+    Basic(BasicMethod),
+    Confirm(ConfirmMethod),
+    Tx(TxMethod)
 }
 
 impl MethodId for Method {
     fn method_id(&self) -> u16 {
         match self {
-            Method::ConnectionMethod(method) => method.method_id(),
-            Method::ChannelMethod(method) => method.method_id(),
-            Method::AccessMethod(method) => method.method_id(),
-            Method::ExchangeMethod(method) => method.method_id(),
-            Method::QueueMethod(method) => method.method_id(),
-            Method::BasicMethod(method) => method.method_id(),
-            Method::ConfirmMethod(method) => method.method_id(),
-            Method::TxMethod(method) => method.method_id()
+            Method::Connection(method) => method.method_id(),
+            Method::Channel(method) => method.method_id(),
+            Method::Access(method) => method.method_id(),
+            Method::Exchange(method) => method.method_id(),
+            Method::Queue(method) => method.method_id(),
+            Method::Basic(method) => method.method_id(),
+            Method::Confirm(method) => method.method_id(),
+            Method::Tx(method) => method.method_id()
         }
     }
 }
 
 impl Default for Method {
     fn default() -> Self {
-        Method::ConnectionMethod(ConnectionMethod::default())
+        Method::Connection(ConnectionMethod::default())
     }
 }
 
-pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, FriameDecodeErr> {
+pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, FrameDecodeErr> {
     match class {
         Class::Connection => {
             let method = ConnectionMethod::from(method_id);
             if let ConnectionMethod::Unknown = method {
                 return Err(FrameDecodeErr::UnknownMethodType);
             } else {
-                return Ok(Method::ConnectionMethod(method));
+                return Ok(Method::Connection(method));
             }
         }
         Class::Channel => {
@@ -746,7 +746,7 @@ pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, Fr
             if let ChannelMethod::Unknown = method {
                 return Err(FrameDecodeErr::UnknownMethodType);
             } else {
-                return Ok(Method::ChannelMethod(method));
+                return Ok(Method::Channel(method));
             }
         }
         Class::Access => {
@@ -754,7 +754,7 @@ pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, Fr
             if let AccessMethod::Unknown = method {
                 return Err(FrameDecodeErr::UnknownMethodType);
             } else {
-                return Ok(Method::AccessMethod(method));
+                return Ok(Method::Access(method));
             }
         }
         Class::Exchange => {
@@ -762,7 +762,7 @@ pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, Fr
             if let ExchangeMethod::Unknown = method {
                 return Err(FrameDecodeErr::UnknownMethodType);
             } else {
-                return Ok(Method::ExchangeMethod(method));
+                return Ok(Method::Exchange(method));
             }
         }
         Class::Queue => {
@@ -770,7 +770,7 @@ pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, Fr
             if let QueueMethod::Unknown = method {
                 return Err(FrameDecodeErr::UnknownMethodType);
             } else {
-                return Ok(Method::QueueMethod(method));
+                return Ok(Method::Queue(method));
             }
         }
         Class::Basic => {
@@ -778,7 +778,7 @@ pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, Fr
             if let BasicMethod::Unknown = method {
                 return Err(FrameDecodeErr::UnknownMethodType);
             } else {
-                return Ok(Method::BasicMethod(method));
+                return Ok(Method::Basic(method));
             }
         }
         Class::Tx => {
@@ -786,7 +786,7 @@ pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, Fr
             if let TxMethod::Unknown = method {
                 return Err(FrameDecodeErr::UnknownMethodType);
             } else {
-                return Ok(Method::TxMethod(method));
+                return Ok(Method::Tx(method));
             }
         }
         Class::Confirm => {
@@ -794,7 +794,7 @@ pub(crate) fn get_method_type(class: Class, method_id: u16) -> Result<Method, Fr
             if let ConfirmMethod::Unknown = method {
                 return Err(FrameDecodeErr::UnknownMethodType);
             } else {
-                return Ok(Method::ConfirmMethod(method));
+                return Ok(Method::Confirm(method));
             }
         }
         Class::Unknown => return Err(FrameDecodeErr::UnknownClassType)

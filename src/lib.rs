@@ -8,8 +8,6 @@ pub mod connection;
 pub mod exchange;
 pub mod frame;
 pub mod queue;
-pub mod user;
-pub mod vhost;
 pub mod error;
 
 pub use common::{Timestamp, ShortStr, LongStr, Decimal, FieldName, FieldValue, FieldArray, FieldTable, BytesArray};

@@ -1,12 +1,21 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
-use crate::common::{Encode, MethodId};
+use crate::common::{Encode, MethodId, Decode};
+use crate::frame::{Arguments, Property};
+use crate::error::FrameDecodeErr;
 
 pub struct TxSelect;
 
 impl Encode for TxSelect {
     #[inline]
     fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for TxSelect {
+    #[inline]
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::TxSelect(TxSelect)))
     }
 }
 
@@ -18,11 +27,25 @@ impl Encode for TxSelectOk {
     }
 }
 
+impl Decode<Arguments> for TxSelectOk {
+    #[inline]
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::TxSelectOk(TxSelectOk)))
+    }
+}
+
 pub struct TxCommit;
 
 impl Encode for TxCommit {
     #[inline]
     fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for TxCommit {
+    #[inline]
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::TxCommit(TxCommit)))
     }
 }
 
@@ -34,11 +57,25 @@ impl Encode for TxCommitOk {
     }
 }
 
+impl Decode<Arguments> for TxCommitOk {
+    #[inline]
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::TxCommitOk(TxCommitOk)))
+    }
+}
+
 pub struct TxRollback;
 
 impl Encode for TxRollback {
     #[inline]
     fn encode(&self, _: &mut BytesMut) {
+    }
+}
+
+impl Decode<Arguments> for TxRollback {
+    #[inline]
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::TxRollback(TxRollback)))
     }
 }
 
@@ -50,6 +87,12 @@ impl Encode for TxRollbackOk {
     }
 }
 
+impl Decode<Arguments> for TxRollbackOk {
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
+        Ok((buffer, Arguments::TxRollbackOk(TxRollbackOk)))
+    }
+}
+
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
 pub struct TxProperties {
@@ -57,11 +100,22 @@ pub struct TxProperties {
 }
 
 impl Encode for TxProperties {
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.flags);
     }
 }
 
+impl Decode<Property> for TxProperties {
+    #[inline]
+    fn decode(buffer: &[u8]) -> Result<(&[u8], Property), FrameDecodeErr>{
+        let (buffer, flags) = match u32::decode(buffer) {
+            Ok(ret) => ret,
+            Err(e) => return Err(e)
+        };
+        Ok((buffer, Property::Tx(TxProperties { flags })))
+    }
+}
 
 pub enum TxMethod {
     Select,

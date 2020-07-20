@@ -52,9 +52,6 @@ impl From<u8> for FrameType {
     }
 }
 
-
-
-
 #[derive(Property)]
 #[property(get(public), set(public))]
 pub struct ProtocolHeader {
