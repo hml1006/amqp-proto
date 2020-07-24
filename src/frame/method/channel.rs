@@ -1,9 +1,10 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
-use crate::{ShortStr, LongStr};
-use crate::common::{Encode, MethodId, Class, Method, Decode, get_method_type};
-use crate::frame::{Arguments, Property};
 use crate::error::FrameDecodeErr;
+use crate::frame::base::{ShortStr, Encode, Arguments, Decode};
+use crate::class::Class;
+use crate::LongStr;
+use crate::method::{Method, get_method_type, MethodId};
 
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
@@ -22,7 +23,7 @@ impl Decode<Arguments> for ChannelOpen {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, out_of_band) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ChannelOpen out_of_band -> {}", e)))
         };
         Ok((buffer, Arguments::ChannelOpen(ChannelOpen { out_of_band })))
     }
@@ -44,7 +45,7 @@ impl Decode<Arguments> for ChannelOpenOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, channel_id) = match LongStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ChannelOpenOk channel_id -> {}", e)))
         };
         Ok((buffer, Arguments::ChannelOpenOk(ChannelOpenOk { channel_id })))
     }
@@ -66,7 +67,7 @@ impl Decode<Arguments> for ChannelFlow {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ChannelFlow flags -> {}", e)))
         };
         let active = if flags & (1 << 0) != 0 { true } else { false };
         Ok((buffer, Arguments::ChannelFlow(ChannelFlow { active })))
@@ -89,7 +90,7 @@ impl Decode<Arguments> for ChannelFlowOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ChannelFlowOk flags -> {}", e)))
         };
         let active = if flags & (1 << 0) != 0 { true } else { false };
         Ok((buffer, Arguments::ChannelFlowOk(ChannelFlowOk { active })))
@@ -118,27 +119,27 @@ impl Decode<Arguments> for ChannelClose {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, reply_code) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ChannelClose reply_code -> {}", e)))
         };
         let (buffer, reply_text) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ChannelClose reply_text -> {}", e)))
         };
         let (buffer, class_id) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ChannelClose class_id -> {}", e)))
         };
         let (buffer, method_id) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ChannelClose method_id -> {}", e)))
         };
         let class = Class::from(class_id);
         if let Class::Unknown = class {
-            return Err(FrameDecodeErr::UnknownClassType);
+            return Err(FrameDecodeErr::SyntaxError("decode ChannelClose class unknown"));
         }
         let method = match get_method_type(class.clone(), method_id) {
             Ok(method) => method,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ChannelClose method -> {}", e)))
         };
         Ok((buffer, Arguments::ChannelClose(ChannelClose { reply_code, reply_text, class, method })))
     }
@@ -156,71 +157,5 @@ impl Decode<Arguments> for ChannelCloseOk {
     #[inline]
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         Ok((buffer, Arguments::ChannelCloseOk(ChannelCloseOk)))
-    }
-}
-
-#[derive(Property, Default)]
-#[property(get(public), set(public))]
-pub struct ChannelProperties {
-    flags: u32,
-}
-
-impl Encode for ChannelProperties {
-    fn encode(&self, buffer: &mut BytesMut) {
-        buffer.put_u32(self.flags);
-    }
-}
-
-impl Decode<Property> for ChannelProperties {
-    fn decode(buffer: &[u8]) -> Result<(&[u8], Property), FrameDecodeErr>{
-        let (buffer, flags) = match u32::decode(buffer) {
-            Ok(ret) => ret,
-            Err(e) => return Err(e)
-        };
-        Ok((buffer, Property::Channel(ChannelProperties { flags })))
-    }
-}
-
-pub enum ChannelMethod {
-    Open,
-    OpenOk,
-    Flow,
-    FlowOk,
-    Close,
-    CloseOk,
-    Unknown
-}
-
-impl MethodId for ChannelMethod {
-    fn method_id(&self) -> u16 {
-        match self {
-            ChannelMethod::Open => 10,
-            ChannelMethod::OpenOk => 11,
-            ChannelMethod::Flow => 20,
-            ChannelMethod::FlowOk => 21,
-            ChannelMethod::Close => 40,
-            ChannelMethod::CloseOk => 41,
-            ChannelMethod::Unknown => 0xffff
-        }
-    }
-}
-
-impl Default for ChannelMethod {
-    fn default() -> ChannelMethod {
-        ChannelMethod::Unknown
-    }
-}
-
-impl From<u16> for ChannelMethod {
-    fn from(method_id: u16) -> Self {
-        match method_id {
-            10 => ChannelMethod::Open,
-            11 => ChannelMethod::OpenOk,
-            20 => ChannelMethod::Flow,
-            21 => ChannelMethod::FlowOk,
-            40 => ChannelMethod::Close,
-            41 => ChannelMethod::CloseOk,
-            _  => ChannelMethod::Unknown
-        }
     }
 }

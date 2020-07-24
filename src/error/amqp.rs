@@ -1,8 +1,4 @@
 use std::fmt::Formatter;
-use std::fmt::Display;
-use std::io;
-use std::fmt;
-use nom::error::ErrorKind;
 
 pub enum AmqpErrorKind {
     ReplySuccess,
@@ -104,60 +100,4 @@ impl std::fmt::Debug for AmqpError {
 }
 
 impl std::error::Error for AmqpError {
-}
-
-#[derive(Debug)]
-pub enum FrameDecodeErr {
-    Incomplete,
-    DecodeBaseTypeFailed,
-
-    DecodeShortStrTooLarge,
-
-    DecodeLongStrTooLarge,
-
-    DecodeFieldNameStartCharWrong,
-    DecodeFieldNameTooLarge,
-
-    DecodeFieldValueTypeUnknow,
-
-    UnknowFrameType,
-    UnknownClassType,
-    UnknownMethodType,
-    ParseAmqpHeaderFailed,
-    ParseFrameFailed,
-
-    Unknown,
-
-    NomErr(ErrorKind),
-    Amqp(AmqpError),
-    Io(io::Error)
-}
-
-impl Display for FrameDecodeErr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            FrameDecodeErr::Incomplete => write!(f, "Incomplete"),
-            FrameDecodeErr::DecodeBaseTypeFailed => write!(f, "decode base type failed"),
-            FrameDecodeErr::DecodeFieldNameStartCharWrong => write!(f, "decode field name start char wrong"),
-            FrameDecodeErr::DecodeFieldNameTooLarge => write!(f, "decode field name too large"),
-            FrameDecodeErr::DecodeShortStrTooLarge => write!(f, "decode short string too large"),
-            FrameDecodeErr::DecodeLongStrTooLarge => write!(f, "decode long string too large"),
-            FrameDecodeErr::DecodeFieldValueTypeUnknow => write!(f, "decode field value type unknown"),
-            FrameDecodeErr::UnknowFrameType => write!(f, "unknow frame type"),
-            FrameDecodeErr::UnknownClassType => write!(f, "unknown class type"),
-            FrameDecodeErr::UnknownMethodType => write!(f, "unknown method type"),
-            FrameDecodeErr::ParseAmqpHeaderFailed => write!(f, "parse Amqp header failed"),
-            FrameDecodeErr::ParseFrameFailed => write!(f, "parse frame failed"),
-            FrameDecodeErr::Unknown => write!(f, "unknown"),
-            FrameDecodeErr::NomErr(kind) => write!(f, "{:?}", kind),
-            FrameDecodeErr::Amqp(err) => write!(f, "amqp error: {}", err),
-            FrameDecodeErr::Io(err) => write!(f, "{}", err)
-        }
-    }
-}
-
-impl From<io::Error> for FrameDecodeErr {
-    fn from(err: io::Error) -> Self {
-        FrameDecodeErr::Io(err)
-    }
 }

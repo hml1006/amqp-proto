@@ -1,8 +1,7 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
 use crate::{ShortStr, FieldTable};
-use crate::common::{Encode, MethodId, Decode};
-use crate::frame::{Arguments, Property};
+use crate::frame::base::{Arguments, Decode, Encode};
 use crate::error::FrameDecodeErr;
 
 #[derive(Property, Default)]
@@ -39,19 +38,19 @@ impl Decode<Arguments> for ExchangeDeclare {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, ticket) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeDeclare ticket -> {}", e)))
         };
         let (buffer, exchange_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeDeclare exchange_name -> {}", e)))
         };
         let (buffer, exchange_type) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeDeclare exchange_type -> {}", e)))
         };
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeDeclare flags -> {}", e)))
         };
         let passive = if flags & (1 << 0) != 0 { true } else { false };
         let durable = if flags & (1 << 1) != 0 { true } else { false };
@@ -60,7 +59,7 @@ impl Decode<Arguments> for ExchangeDeclare {
         let no_wait = if flags & (1 << 4) != 0 { true } else { false };
         let (buffer, args) = match FieldTable::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeDeclare args -> {}", e)))
         };
         Ok((buffer, Arguments::ExchangeDeclare(ExchangeDeclare { ticket, exchange_name, exchange_type, passive, durable, auto_delete, internal, no_wait, args})))
     }
@@ -104,15 +103,15 @@ impl Decode<Arguments> for ExchangeDelete {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, ticket) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeDelete ticket -> {}", e)))
         };
         let (buffer, exchange_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeDelete exchange_name -> {}", e)))
         };
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeDelete flags -> {}", e)))
         };
         let if_unused = if flags & (1 << 0) != 0 { true } else { false };
         let no_wait = if flags & (1 << 1) != 0 { true } else { false };
@@ -160,28 +159,28 @@ impl Decode<Arguments> for ExchangeBind {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, ticket) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeBind ticket -> {}", e)))
         };
         let (buffer, destination) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeBind destination -> {}", e)))
         };
         let (buffer, source) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeBind source -> {}", e)))
         };
         let (buffer, routing_key) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeBind routing_key -> {}", e)))
         };
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeBind flags -> {}", e)))
         };
         let no_wait = if flags & (1 << 0) != 0 { true } else { false };
         let (buffer, args) = match FieldTable::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeBind args -> {}", e)))
         };
         Ok((buffer, Arguments::ExchangeBind(ExchangeBind { ticket, destination, source, routing_key, no_wait, args })))
     }
@@ -228,28 +227,28 @@ impl Decode<Arguments> for ExchangeUnbind {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, ticket) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeUnbind ticket -> {}", e)))
         };
         let (buffer, destination) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeUnbind destination -> {}", e)))
         };
         let (buffer, source) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeUnbind source -> {}", e)))
         };
         let (buffer, routing_key) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeUnbind routing_key -> {}", e)))
         };
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeUnbind flags -> {}", e)))
         };
         let no_wait = if flags & (1 << 0) != 0 { true } else { false };
         let (buffer, args) = match FieldTable::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ExchangeUnbind args -> {}", e)))
         };
         Ok((buffer, Arguments::ExchangeUnbind(ExchangeUnbind { ticket, destination, source, routing_key, no_wait, args })))
     }
@@ -266,78 +265,5 @@ impl Encode for ExchangeUnbindOk {
 impl Decode<Arguments> for ExchangeUnbindOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         Ok((buffer, Arguments::ExchangeUnbindOk(ExchangeUnbindOk)))
-    }
-}
-
-#[derive(Property, Default)]
-#[property(get(public), set(public))]
-pub struct ExchangeProperties {
-    flags: u32,
-}
-
-impl Encode for ExchangeProperties {
-    #[inline]
-    fn encode(&self, buffer: &mut BytesMut) {
-        buffer.put_u32(self.flags);
-    }
-}
-
-impl Decode<Property> for ExchangeProperties {
-    fn decode(buffer: &[u8]) -> Result<(&[u8], Property), FrameDecodeErr>{
-        let (buffer, flags) = match u32::decode(buffer) {
-            Ok(ret) => ret,
-            Err(e) => return Err(e)
-        };
-        Ok((buffer, Property::Exchange(ExchangeProperties { flags })))
-    }
-}
-
-pub enum ExchangeMethod {
-    Declare,
-    DeclareOk,
-    Delete,
-    DeleteOk,
-    Bind,
-    BindOk,
-    Unbind,
-    UnbindOk,
-    Unknown
-}
-
-impl MethodId for ExchangeMethod {
-    fn method_id(&self) -> u16 {
-        match self {
-            ExchangeMethod::Declare => 10,
-            ExchangeMethod::DeclareOk => 11,
-            ExchangeMethod::Delete => 20,
-            ExchangeMethod::DeleteOk => 21,
-            ExchangeMethod::Bind => 30,
-            ExchangeMethod::BindOk => 31,
-            ExchangeMethod::Unbind => 40,
-            ExchangeMethod::UnbindOk => 51,
-            ExchangeMethod::Unknown => 0xffff
-        }
-    }
-}
-
-impl Default for ExchangeMethod {
-    fn default() -> Self {
-        ExchangeMethod::Unknown
-    }
-}
-
-impl From<u16> for ExchangeMethod {
-    fn from(method_id: u16) -> Self {
-        match method_id {
-            10 => ExchangeMethod::Declare,
-            11 => ExchangeMethod::DeclareOk,
-            20 => ExchangeMethod::Delete,
-            21 => ExchangeMethod::DeleteOk,
-            30 => ExchangeMethod::Bind,
-            31 => ExchangeMethod::BindOk,
-            40 => ExchangeMethod::Unbind,
-            51 => ExchangeMethod::UnbindOk,
-            _  => ExchangeMethod::Unknown
-        }
     }
 }

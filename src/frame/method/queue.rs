@@ -1,8 +1,7 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
 use crate::{ShortStr, FieldTable};
-use crate::common::{Encode, MethodId, Decode};
-use crate::frame::{Arguments, Property};
+use crate::frame::base::{Encode, Arguments, Decode};
 use crate::error::FrameDecodeErr;
 
 #[derive(Property, Default)]
@@ -37,19 +36,19 @@ impl Decode<Arguments> for QueueDeclare {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, ticket) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDeclare ticket -> {}", e)))
         };
         let (buffer, queue_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDeclare queue_name -> {}", e)))
         };
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDeclare flags -> {}", e)))
         };
         let (buffer, args) = match FieldTable::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDeclare args -> {}", e)))
         };
         let passive = if flags & (1 << 0) != 0 { true } else { false };
         let durable = if flags & (1 << 1) != 0 { true } else { false };
@@ -80,15 +79,15 @@ impl Decode<Arguments> for QueueDeclareOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, queue_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDeclareOk queue_name -> {}", e)))
         };
         let (buffer, message_count) = match u32::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDeclareOk message_count -> {}", e)))
         };
         let (buffer, consumer_count) = match u32::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDeclareOk consumer_count -> {}", e)))
         };
         Ok((buffer, Arguments::QueueDeclareOk(QueueDeclareOk {queue_name, message_count, consumer_count})))
     }
@@ -120,27 +119,27 @@ impl Decode<Arguments> for QueueBind {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, ticket) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueBind ticket -> {}", e)))
         };
         let (buffer, queue_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueBind queue_name -> {}", e)))
         };
         let (buffer, exchange_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueBind exchange_name -> {}", e)))
         };
         let (buffer, routing_key) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueBind routing_key -> {}", e)))
         };
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueBind flags -> {}", e)))
         };
         let (buffer, args) = match FieldTable::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueBind args -> {}", e)))
         };
         let no_wait = if flags & (1 << 0) != 0 { true } else { false };
         Ok((buffer, Arguments::QueueBind(QueueBind {ticket, queue_name, exchange_name, routing_key, no_wait, args})))
@@ -183,15 +182,15 @@ impl Decode<Arguments> for QueuePurge {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, ticket) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueuePurge ticket -> {}", e)))
         };
         let (buffer, queue_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueuePurge queue_name -> {}", e)))
         };
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueuePurge flags -> {}", e)))
         };
         let no_wait = if flags & (1 << 0) != 0 { true } else { false };
         Ok((buffer, Arguments::QueuePurge(QueuePurge { ticket, queue_name, no_wait})))
@@ -216,7 +215,7 @@ impl Decode<Arguments> for QueuePurgeOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, message_count) = match u32::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueuePurgeOk message_count -> {}", e)))
         };
         Ok((buffer, Arguments::QueuePurgeOk(QueuePurgeOk { message_count })))
     }
@@ -248,15 +247,15 @@ impl Decode<Arguments> for QueueDelete {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, ticket) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDelete ticket -> {}", e)))
         };
         let (buffer, queue_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDelete queue_name -> {}", e)))
         };
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDelete flags -> {}", e)))
         };
         let if_unused = if flags & (1 << 0) != 0 { true } else { false };
         let if_empty = if flags & (1 << 1) != 0 { true } else { false };
@@ -283,7 +282,7 @@ impl Decode<Arguments> for QueueDeleteOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, message_count) = match u32::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueDeleteOk message_count -> {}", e)))
         };
         Ok((buffer, Arguments::QueueDeleteOk(QueueDeleteOk { message_count })))
     }
@@ -313,23 +312,23 @@ impl Decode<Arguments> for QueueUnbind {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, ticket) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueUnbind ticket -> {}", e)))
         };
         let (buffer, queue_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueUnbind queue_name -> {}", e)))
         };
         let (buffer, exchange_name) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueUnbind exchange_name -> {}", e)))
         };
         let (buffer, routing_key) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueUnbind routing_key -> {}", e)))
         };
         let (buffer, args) = match FieldTable::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode QueueUnbind args -> {}", e)))
         };
         Ok((buffer, Arguments::QueueUnbind(QueueUnbind { ticket, queue_name, exchange_name, routing_key, args })))
     }
@@ -347,83 +346,5 @@ impl Decode<Arguments> for QueueUnbindOk {
     #[inline]
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         Ok((buffer, Arguments::QueueUnbindOk(QueueUnbindOk)))
-    }
-}
-
-#[derive(Property, Default)]
-#[property(get(public), set(public))]
-pub struct QueueProperties {
-    flags: u32,
-}
-
-impl Encode for QueueProperties {
-    fn encode(&self, buffer: &mut BytesMut) {
-        buffer.put_u32(self.flags);
-    }
-}
-
-impl Decode<Property> for QueueProperties {
-    fn decode(buffer: &[u8]) -> Result<(&[u8], Property), FrameDecodeErr>{
-        let (buffer, flags) = match u32::decode(buffer) {
-            Ok(ret) => ret,
-            Err(e) => return Err(e)
-        };
-        Ok((buffer, Property::Queue(QueueProperties { flags })))
-    }
-}
-
-pub enum QueueMethod {
-    Declare,
-    DeclareOk,
-    Bind,
-    BindOk,
-    Unbind,
-    UnbindOk,
-    Purge,
-    PurgeOk,
-    Delete,
-    DeleteOk,
-    Unknown
-}
-
-impl MethodId for QueueMethod {
-    fn method_id(&self) -> u16 {
-        match self {
-            QueueMethod::Declare => 10,
-            QueueMethod::DeclareOk => 11,
-            QueueMethod::Bind => 20,
-            QueueMethod::BindOk => 21,
-            QueueMethod::Unbind => 50,
-            QueueMethod::UnbindOk => 51,
-            QueueMethod::Purge => 30,
-            QueueMethod::PurgeOk => 31,
-            QueueMethod::Delete => 40,
-            QueueMethod::DeleteOk => 41,
-            QueueMethod::Unknown => 0xffff
-        }
-    }
-}
-
-impl Default for QueueMethod {
-    fn default() -> Self {
-        QueueMethod::Unknown
-    }
-}
-
-impl From<u16> for QueueMethod {
-    fn from(method_id: u16) -> Self {
-        match method_id {
-            10 => QueueMethod::Declare,
-            11 => QueueMethod::DeclareOk,
-            20 => QueueMethod::Bind,
-            21 => QueueMethod::BindOk,
-            50 => QueueMethod::Unbind,
-            51 => QueueMethod::UnbindOk,
-            30 => QueueMethod::Purge,
-            31 => QueueMethod::PurgeOk,
-            40 => QueueMethod::Delete,
-            41 => QueueMethod::DeleteOk,
-            _  => QueueMethod::Unknown
-        }
     }
 }

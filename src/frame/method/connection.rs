@@ -1,9 +1,10 @@
 use property::Property;
 use bytes::{BytesMut, BufMut};
 use crate::{ShortStr, FieldTable, LongStr};
-use crate::common::{Encode, MethodId, Class, Method, Decode, get_method_type};
-use crate::frame::{Arguments, Property};
+use crate::frame::base::{Encode, Arguments, Decode};
 use crate::error::FrameDecodeErr;
+use crate::class::Class;
+use crate::method::{Method, get_method_type, MethodId};
 
 #[derive(Property, Default)]
 #[property(get(public), set(public))]
@@ -29,23 +30,23 @@ impl Decode<Arguments> for ConnectionStart {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, version_major) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionStart version_major -> {}", e)))
         };
         let (buffer, version_minor) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionStart version_minor -> {}", e)))
         };
         let (buffer, server_properties) = match FieldTable::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionStart server_properties -> {}", e)))
         };
         let (buffer, mechanisms) = match LongStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionStart mechanisms -> {}", e)))
         };
         let (buffer, locales) = match LongStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionStart locales -> {}", e)))
         };
         Ok((buffer, Arguments::ConnectionStart(ConnectionStart { version_major, version_minor, server_properties, mechanisms, locales })))
     }
@@ -73,19 +74,19 @@ impl Decode<Arguments> for ConnectionStartOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, client_properties) = match FieldTable::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionStartOk client_properties -> {}", e)))
         };
         let (buffer, mechanism) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionStartOk mechanism -> {}", e)))
         };
         let (buffer, response) = match LongStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionStartOk response -> {}", e)))
         };
         let (buffer, locale) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionStartOk locale -> {}", e)))
         };
         Ok((buffer, Arguments::ConnectionStartOk(ConnectionStartOk { client_properties, mechanism, response, locale })))
     }
@@ -107,7 +108,7 @@ impl Decode<Arguments> for ConnectionSecure {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, challenge) = match LongStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionSecure challenge -> {}", e)))
         };
         Ok((buffer, Arguments::ConnectionSecure(ConnectionSecure { challenge })))
     }
@@ -129,7 +130,7 @@ impl Decode<Arguments> for ConnectionSecureOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, response) = match LongStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionSecureOk response -> {}", e)))
         };
         Ok((buffer, Arguments::ConnectionSecureOk(ConnectionSecureOk { response })))
     }
@@ -155,15 +156,15 @@ impl Decode<Arguments> for ConnectionTune {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, channel_max) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionTune channel_max -> {}", e)))
         };
         let (buffer, frame_max) = match u32::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionTune frame_max -> {}", e)))
         };
         let (buffer, heartbeat) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionTune heartbeat -> {}", e)))
         };
         Ok((buffer, Arguments::ConnectionTune(ConnectionTune { channel_max, frame_max, heartbeat })))
     }
@@ -189,15 +190,15 @@ impl Decode<Arguments> for ConnectionTuneOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, channel_max) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionTuneOk channel_max -> {}", e)))
         };
         let (buffer, frame_max) = match u32::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionTuneOk frame_max -> {}", e)))
         };
         let (buffer, heartbeat) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionTuneOk heartbeat -> {}", e)))
         };
         Ok((buffer, Arguments::ConnectionTuneOk(ConnectionTuneOk { channel_max, frame_max, heartbeat })))
     }
@@ -223,15 +224,15 @@ impl Decode<Arguments> for ConnectionOpen {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, vhost) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionOpen vhost -> {}", e)))
         };
         let (buffer, capabilities) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionOpen capabilities -> {}", e)))
         };
         let (buffer, flags) = match u8::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionOpen flags -> {}", e)))
         };
         let insist = if flags & (1 << 0) != 0 { true } else { false };
         Ok((buffer, Arguments::ConnectionOpen(ConnectionOpen { vhost, capabilities, insist })))
@@ -254,7 +255,7 @@ impl Decode<Arguments> for ConnectionOpenOk {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, known_hosts) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionOpenOk known_hosts -> {}", e)))
         };
         Ok((buffer, Arguments::ConnectionOpenOk(ConnectionOpenOk { known_hosts })))
     }
@@ -282,27 +283,27 @@ impl Decode<Arguments> for ConnectionClose {
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         let (buffer, reply_code) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionClose reply_code -> {}", e)))
         };
         let (buffer, reply_text) = match ShortStr::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionClose reply_text -> {}", e)))
         };
         let (buffer, class_id) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionClose class_id -> {}", e)))
         };
         let (buffer, method_id) = match u16::decode(buffer) {
             Ok(ret) => ret,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionClose method_id -> {}", e)))
         };
         let class = Class::from(class_id);
         if let Class::Unknown = class {
-            return Err(FrameDecodeErr::UnknownClassType);
+            return Err(FrameDecodeErr::SyntaxError("decode ConnectionClose class unknown"));
         }
         let method = match get_method_type(class.clone(), method_id) {
             Ok(method) => method,
-            Err(e) => return Err(e)
+            Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode ConnectionClose method -> {}", e)))
         };
         Ok((buffer, Arguments::ConnectionClose(ConnectionClose { reply_code, reply_text, class, method })))
     }
@@ -320,84 +321,5 @@ impl Decode<Arguments> for ConnectionCloseOk {
     #[inline]
     fn decode(buffer: &[u8]) -> Result<(&[u8], Arguments), FrameDecodeErr>{
         Ok((buffer, Arguments::ConnectionCloseOk(ConnectionCloseOk)))
-    }
-}
-
-#[derive(Property, Default)]
-#[property(get(public), set(public))]
-pub struct ConnectionProperties {
-    flags: u32,
-}
-
-impl Encode for ConnectionProperties {
-    #[inline]
-    fn encode(&self, buffer: &mut BytesMut) {
-        buffer.put_u32(self.flags);
-    }
-}
-
-impl Decode<Property> for ConnectionProperties {
-    fn decode(buffer: &[u8]) -> Result<(&[u8], Property), FrameDecodeErr>{
-        let (buffer, flags) = match u32::decode(buffer) {
-            Ok(ret) => ret,
-            Err(e) => return Err(e)
-        };
-        Ok((buffer, Property::Connection(ConnectionProperties { flags })))
-    }
-}
-
-pub enum ConnectionMethod {
-    Start,
-    StartOk,
-    Secure,
-    SecureOk,
-    Tune,
-    TuneOk,
-    Open,
-    OpenOk,
-    Close,
-    CloseOk,
-    Unknown
-}
-
-impl MethodId for ConnectionMethod {
-    fn method_id(&self) -> u16 {
-        match self {
-            ConnectionMethod::Start => 10,
-            ConnectionMethod::StartOk => 11,
-            ConnectionMethod::Secure => 20,
-            ConnectionMethod::SecureOk => 21,
-            ConnectionMethod::Tune => 30,
-            ConnectionMethod::TuneOk => 31,
-            ConnectionMethod::Open => 40,
-            ConnectionMethod::OpenOk => 41,
-            ConnectionMethod::Close => 50,
-            ConnectionMethod::CloseOk => 51,
-            ConnectionMethod::Unknown => 0xffff
-        }
-    }
-}
-
-impl Default for ConnectionMethod {
-    fn default() -> Self {
-        ConnectionMethod::Unknown
-    }
-}
-
-impl From<u16> for ConnectionMethod {
-    fn from(method_id: u16) -> Self {
-        match method_id {
-            10 => ConnectionMethod::Start,
-            11 => ConnectionMethod::StartOk,
-            20 => ConnectionMethod::Secure,
-            21 => ConnectionMethod::SecureOk,
-            30 => ConnectionMethod::Tune,
-            31 => ConnectionMethod::TuneOk,
-            40 => ConnectionMethod::Open,
-            41 => ConnectionMethod::OpenOk,
-            50 => ConnectionMethod::Close,
-            51 => ConnectionMethod::CloseOk,
-            _  => ConnectionMethod::Unknown
-        }
     }
 }

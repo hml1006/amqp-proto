@@ -1,27 +1,19 @@
-mod confirm;
-mod tx;
-mod basic;
-mod access;
-mod common;
-pub mod channel;
-pub mod connection;
-pub mod exchange;
+#![feature(in_band_lifetimes)]
+
+pub mod class;
+pub mod method;
 pub mod frame;
-pub mod queue;
 pub mod error;
 
-pub use common::{Timestamp, ShortStr, LongStr, Decimal, FieldName, FieldValue, FieldArray, FieldTable, BytesArray};
-pub use frame::{Frame, FrameType, FRAME_END};
+pub use frame::base::{Timestamp, ShortStr, LongStr, Decimal, FieldName, FieldValue, FieldArray, FieldTable, BytesArray, Decode, Encode};
 
 
 #[cfg(test)]
 mod tests {
-    use crate::{ShortStr, LongStr, Decimal, FieldValue, FieldTable};
+    use crate::{ShortStr, LongStr, Decimal, FieldValue, FieldTable, FieldName, FieldArray, Encode};
     use bytes::{BytesMut, BufMut};
     use std::borrow::BorrowMut;
-    use crate::error::FrameDecodeErr;
-    use crate::common::{Encode, FieldName, FieldArray};
-    use crate::connection::ConnectionStart;
+    use crate::frame::method::connection::ConnectionStart;
 
     #[test]
     fn test_connection_start() {
@@ -46,8 +38,11 @@ mod tests {
         }
 
         let short_str = ShortStr::with_bytes(tmp.as_bytes());
-        let ret = match short_str.err().unwrap(){
-            FrameDecodeErr::DecodeShortStrTooLarge => true,
+        let ret = match short_str {
+            Err(e) => {
+                println!("{}", e);
+                true
+            },
             _ => false
         };
         assert!(ret);
@@ -67,8 +62,11 @@ mod tests {
             tmp.push_str("aaaabbbb");
         }
         let long_str = LongStr::with_bytes(tmp.as_bytes());
-        let ret = match long_str.err().unwrap() {
-            FrameDecodeErr::DecodeLongStrTooLarge => true,
+        let ret = match long_str {
+            Err(e) => {
+                println!("{}", e);
+                true
+            },
             _ => false
         };
         assert!(ret);
@@ -98,15 +96,21 @@ mod tests {
             tmp.push_str("aaaaabbbbb");
         }
         let field_name = FieldName::with_bytes(tmp.as_bytes());
-        let ret = match field_name.err().unwrap() {
-            FrameDecodeErr::DecodeFieldNameTooLarge => true,
+        let ret = match field_name {
+            Err(e) => {
+                println!("{}", e);
+                true
+            },
             _ => false
         };
         assert!(ret);
 
         let field_name = FieldName::with_bytes(b"1ello");
-        let ret = match field_name.err().unwrap() {
-            FrameDecodeErr::DecodeFieldNameStartCharWrong => true,
+        let ret = match field_name {
+            Err(e) => {
+                println!("{}", e);
+                true
+            },
             _ => false
         };
         assert!(ret);
