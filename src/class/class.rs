@@ -1,5 +1,4 @@
 
-
 #[derive(Clone, Copy)]
 pub enum Class {
     Connection,
