@@ -3,7 +3,7 @@ use bytes::BytesMut;
 use crate::error::FrameDecodeErr;
 use crate::frame::base::{ProtocolHeader, Frame};
 use crate::frame::frame_codec::DecodedFrame::AmqpFrame;
-use crate::Decode;
+use crate::codec::Decode;
 
 pub const PROTOCOL_HEADER_SIZE: usize = 8;
 

@@ -1,19 +1,58 @@
 #![feature(in_band_lifetimes)]
 
-pub mod class;
-pub mod method;
-pub mod frame;
-pub mod error;
+mod class;
+mod method;
+mod frame;
+mod error;
 
-pub use frame::base::{Timestamp, ShortStr, LongStr, Decimal, FieldName, FieldValue, FieldArray, FieldTable, BytesArray, Decode, Encode};
+/// Complex amqp types
+pub use frame::base::{Timestamp, ShortStr, LongStr, Decimal, FieldName, FieldValue, FieldArray, FieldTable, BytesArray};
 
+/// Method type and id definitions
+pub use method::{AccessMethod, BasicMethod, ChannelMethod, ConnectionMethod, ConfirmMethod, ExchangeMethod, QueueMethod, TxMethod, Method, MethodId};
+
+/// Class type and id definitions
+pub use class::Class;
+
+/// Content Header frame properties
+pub mod properties {
+    pub use crate::frame::header::access;
+    pub use crate::frame::header::basic;
+    pub use crate::frame::header::channel;
+    pub use crate::frame::header::connection;
+    pub use crate::frame::header::confirm;
+    pub use crate::frame::header::exchange;
+    pub use crate::frame::header::queue;
+    pub use crate::frame::header::tx;
+}
+
+/// Method frame arguments
+pub mod arguments {
+    pub use crate::frame::method::access;
+    pub use crate::frame::method::basic;
+    pub use crate::frame::method::channel;
+    pub use crate::frame::method::connection;
+    pub use crate::frame::method::confirm;
+    pub use crate::frame::method::exchange;
+    pub use crate::frame::method::queue;
+    pub use crate::frame::method::tx;
+}
+pub mod codec {
+    pub use crate::frame::frame_codec::{DecodedFrame, FrameCodec};
+    pub use crate::frame::base::{ContentHeaderPayload, HeartbeatPayload, MethodPayload, Payload, Frame, ProtocolHeader, Decode, Encode};
+}
+pub mod err {
+    pub use crate::error::FrameDecodeErr;
+    pub use crate::error::amqp::{AmqpError, AmqpErrorKind};
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::{ShortStr, LongStr, Decimal, FieldValue, FieldTable, FieldName, FieldArray, Encode};
+    use crate::{ShortStr, LongStr, Decimal, FieldValue, FieldTable, FieldName, FieldArray};
+    use crate::frame::method::connection::ConnectionStart;
+    use crate::codec::Encode;
     use bytes::{BytesMut, BufMut};
     use std::borrow::BorrowMut;
-    use crate::frame::method::connection::ConnectionStart;
 
     #[test]
     fn test_connection_start() {
