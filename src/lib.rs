@@ -37,10 +37,14 @@ pub mod arguments {
     pub use crate::frame::method::queue;
     pub use crate::frame::method::tx;
 }
+
+/// Decode and Encode frame, also has an tokio frame codec.
 pub mod codec {
     pub use crate::frame::frame_codec::{DecodedFrame, FrameCodec};
     pub use crate::frame::base::{ContentHeaderPayload, HeartbeatPayload, MethodPayload, Payload, Frame, ProtocolHeader, Decode, Encode};
 }
+
+/// Frame decode error and amqp protocol error definitions.
 pub mod err {
     pub use crate::error::FrameDecodeErr;
     pub use crate::error::amqp::{AmqpError, AmqpErrorKind};
