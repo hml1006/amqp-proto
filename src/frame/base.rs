@@ -103,8 +103,25 @@ impl std::hash::Hash for ShortStr {
     }
 }
 
+impl ToString for ShortStr {
+    #[inline]
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
+
 impl ShortStr {
-    // build a ShortStr from bytes
+    /// Create a ShortStr from bytes
+    ///
+    /// # Examples
+    /// ```
+    /// use amqp_proto::ShortStr;
+    ///
+    /// let bytes = b"hello";
+    /// let short_str = ShortStr::with_bytes(bytes).unwrap();
+    ///
+    /// assert_eq!(short_str.to_string(), String::from("hello"));
+    /// ```
     #[inline]
     pub fn with_bytes(bytes: &[u8]) -> Result<Self, FrameDecodeErr>{
         if bytes.len() > std::u8::MAX as usize {
@@ -115,6 +132,22 @@ impl ShortStr {
 }
 
 impl Encode for ShortStr {
+    /// Write bytes to BytesMut
+    ///
+    /// # Examples
+    /// ```
+    /// use amqp_proto::ShortStr;
+    /// use bytes::BytesMut;
+    /// use amqp_proto::codec::Encode;
+    ///
+    /// let short_str = ShortStr::with_bytes(b"hello").unwrap();
+    /// let mut buffer = BytesMut::with_capacity(64);
+    ///
+    /// short_str.encode(&mut buffer);
+    ///
+    /// assert_eq!(&buffer[..], &[5u8, 104, 101, 108, 108, 111]);
+    ///
+    /// ```
     #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(self.0.len() as u8);
@@ -123,6 +156,17 @@ impl Encode for ShortStr {
 }
 
 impl Decode<ShortStr> for ShortStr {
+    /// Decode ShortStr from bytes.
+    ///
+    /// # Examples
+    /// ```
+    /// use amqp_proto::ShortStr;
+    /// use amqp_proto::codec::Decode;
+    ///
+    /// let (_, short_str) = ShortStr::decode(&[5u8, 104, 101, 108, 108, 111]).unwrap();
+    ///
+    /// assert_eq!(short_str.to_string(), String::from("hello"));
+    /// ```
     fn decode(buffer: &[u8]) -> Result<(&[u8], ShortStr), FrameDecodeErr> {
         let (buffer, length) = match u8::decode(buffer) {
             Ok(v) => v,
@@ -140,11 +184,28 @@ impl Decode<ShortStr> for ShortStr {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct LongStr(String);
 
+impl ToString for LongStr {
+    #[inline]
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
+
 impl LongStr {
-    // build a LongStr from bytes, the length will be convert to big endian
+    /// Create a LongStr from bytes, the length will be convert to big endian
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use amqp_proto::LongStr;
+    ///
+    /// let long_string = LongStr::with_bytes(b"hello").unwrap();
+    ///
+    ///  assert_eq!(long_string.to_string(), String::from("hello"));
+    /// ```
     #[inline]
     pub fn with_bytes(bytes: &[u8]) -> Result<LongStr, FrameDecodeErr> {
         if bytes.len() > MAX_LONG_STR_LEN {
@@ -156,6 +217,23 @@ impl LongStr {
 }
 
 impl Encode for LongStr {
+    /// Write bytes to BytesMut
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use amqp_proto::LongStr;
+    /// use bytes::BytesMut;
+    /// use amqp_proto::codec::Encode;
+    ///
+    /// let long_string = LongStr::with_bytes(b"hello").unwrap();
+    /// let mut buffer = BytesMut::with_capacity(64);
+    ///
+    /// long_string.encode(&mut buffer);
+    ///
+    /// assert_eq!(&buffer[..], &[0, 0, 0, 5u8, 104, 101, 108, 108, 111])
+    /// ```
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u32(self.0.len() as u32);
         buffer.extend_from_slice(self.0.as_bytes());
@@ -163,6 +241,18 @@ impl Encode for LongStr {
 }
 
 impl Decode<LongStr> for LongStr {
+    /// Decode LongStr from bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use amqp_proto::LongStr;
+    /// use amqp_proto::codec::Decode;
+    ///
+    /// let (_, long_string) = LongStr::decode(&[0, 0, 0, 5u8, 104, 101, 108, 108, 111]).unwrap();
+    ///
+    /// assert_eq!(long_string.to_string(), String::from("hello"));
+    /// ```
     fn decode(buffer: &[u8]) -> Result<(&[u8], LongStr), FrameDecodeErr> {
         let (buffer, length) = match u32::decode(buffer) {
             Ok(v) => v,
@@ -182,19 +272,37 @@ impl Decode<LongStr> for LongStr {
 
 pub type ByteArray = LongStr;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Decimal {
     scale: u8,
     value: u32
 }
 
 impl Decimal {
+    #[inline]
     pub fn new( scale: u8, value: u32) -> Self {
-        Decimal { scale: scale, value: value }
+        Decimal { scale, value }
     }
 }
 
 impl Encode for Decimal {
+    /// Encode Decimal to BytesMut
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use bytes::BytesMut;
+    /// use amqp_proto::Decimal;
+    /// use amqp_proto::codec::Encode;
+    ///
+    /// let decimal = Decimal::new(1,5);
+    /// let mut buffer = BytesMut::with_capacity(8);
+    ///
+    /// decimal.encode(&mut buffer);
+    ///
+    /// assert_eq!(&buffer[..], &[1u8, 0, 0, 0, 5]);
+    /// ```
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(self.scale);
         buffer.put_u32(self.value);
@@ -202,6 +310,19 @@ impl Encode for Decimal {
 }
 
 impl Decode<Decimal> for Decimal {
+    /// Decode decimal from bytes
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use amqp_proto::Decimal;
+    /// use amqp_proto::codec::Decode;
+    ///
+    /// let (_, decimal) = Decimal::decode(&[1u8, 0, 0, 0, 5]).unwrap();
+    ///
+    /// assert_eq!(decimal, Decimal::new(1, 5));
+    /// ```
+    #[inline]
     fn decode(buffer: &[u8]) -> Result<(&[u8], Decimal), FrameDecodeErr> {
         let (buffer, scale) = match u8::decode(buffer) {
             Ok(v) => v,
@@ -217,7 +338,27 @@ impl Decode<Decimal> for Decimal {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FieldName(ShortStr);
+
+impl ToString for FieldName {
+    #[inline]
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
 impl FieldName {
+    /// Create FieldName from bytes.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use amqp_proto::FieldName;
+    ///
+    /// let field_name = FieldName::with_bytes(b"2ello").unwrap_err();
+    /// assert!(format!("{}", field_name).contains("FieldName start char error"));
+    ///
+    /// let field_name = FieldName::with_bytes(b"$ello").unwrap();
+    /// assert_eq!(field_name.to_string(), String::from("$ello"));
+    /// ```
     #[inline]
     pub fn with_bytes(bytes: &[u8]) -> Result<FieldName, FrameDecodeErr> {
         // field name first letter should be '$'  '#' or letter
@@ -228,7 +369,7 @@ impl FieldName {
         };
 
         if !is_start_char_ok {
-            return Err(FrameDecodeErr::SyntaxError("FieldName start char error: "));
+            return Err(FrameDecodeErr::SyntaxError("FieldName start char error"));
         }
 
         // max field name length is 128
@@ -244,18 +385,35 @@ impl FieldName {
 }
 
 impl Hash for FieldName {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
     }
 }
 
 impl Encode for FieldName {
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         self.0.encode(buffer);
     }
 }
 
 impl Decode<FieldName> for FieldName {
+    /// Decode FieldName from bytes
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use amqp_proto::FieldName;
+    /// use amqp_proto::codec::Decode;
+    ///
+    /// let (_, field_name) = FieldName::decode(&[5u8, 104, 101, 108, 108, 111]).unwrap();
+    /// assert_eq!(field_name.to_string(), String::from("hello"));
+    ///
+    /// let err = FieldName::decode(&[5u8, 104, 101, 108, 108]).unwrap_err();
+    /// assert!(format!("{}", err).contains("decode FieldName bytes"));
+    /// ```
+    #[inline]
     fn decode(buffer: &[u8]) -> Result<(&[u8], FieldName), FrameDecodeErr>{
         let (buffer, length) = match u8::decode(buffer) {
             Ok(v) => v,
@@ -276,6 +434,23 @@ impl Decode<FieldName> for FieldName {
 pub type FieldArray = Vec<FieldValue>;
 
 impl Encode for FieldArray {
+    /// Encode FieldArray to bytes.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use amqp_proto::{FieldArray, FieldValue};
+    /// use amqp_proto::codec::Encode;
+    /// use bytes::BytesMut;
+    ///
+    /// let mut buffer = BytesMut::with_capacity(64);
+    /// let mut arr = FieldArray::new();
+    /// arr.push(FieldValue::from_u8(0x1));
+    /// arr.push(FieldValue::from_u8(0x2));
+    /// arr.push(FieldValue::from_u8(0x3));
+    /// buffer.clear();
+    /// arr.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[0x0u8, 0, 0, 0x6u8, b'B', 0x1, b'B', 0x2, b'B', 0x3]);
+    /// ```
     fn encode(&self, buffer: &mut BytesMut) {
         let mut index = buffer.len();
         buffer.put_u32(0);
@@ -292,25 +467,42 @@ impl Encode for FieldArray {
 }
 
 impl Decode<FieldArray> for FieldArray {
+    /// Encode FieldArray to bytes.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use amqp_proto::{FieldArray, FieldValue};
+    /// use amqp_proto::codec::{Encode, Decode};
+    /// use bytes::BytesMut;
+    ///
+    /// let (_, arr) = FieldArray::decode(&[0x0u8, 0, 0, 14u8, b'B', 0x1, b'B', 0x2, b'S', 0, 0, 0, 5u8, 104, 101, 108, 108, 111]).unwrap();
+    /// assert!(matches!(arr[0], FieldValue::U8(v) if v == 0x1u8));
+    /// assert!(matches!(arr[1], FieldValue::U8(v) if v == 0x2u8));
+    /// assert!(matches!(arr[2], FieldValue::LongStr(ref v) if v.to_string() == String::from("hello")));
+    /// ```
     fn decode(buffer: &[u8]) -> Result<(&[u8], FieldArray), FrameDecodeErr> {
         // array bytes length
         let (buffer, length) = match u32::decode(buffer) {
             Ok(ret) => ret,
             Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode FieldArray length -> {}", e)))
         };
+
+        // array bytes
         let (buffer, data) = match take_bytes(buffer, length as usize) {
             Ok(ret) => ret,
             Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode FieldArray bytes->{}", e)))
         };
-        let mut arr: Vec<FieldValue> = Vec::new();
 
+        let mut arr: Vec<FieldValue> = Vec::new();
+        let mut tmp = data;
         loop {
-            let (data, value) = match FieldValue::decode(data) {
+            let (retain, value) = match FieldValue::decode(tmp) {
                 Ok(ret) => ret,
                 Err(e) => return Err(FrameDecodeErr::DecodeError(format!("read FieldArray item failed -> {}", e)))
             };
+            tmp = retain;
             arr.push(value);
-            if data.len() == 0 {
+            if tmp.len() == 0 {
                 return Ok((buffer, arr))
             }
         }
@@ -338,7 +530,7 @@ pub enum FieldValueKind {
     LongStr,        // UTF-8 null-terminated character string, u32 + content
     FieldArray,     // length + field value + filed value +...
     FieldTable,     // nested field table
-    ByteArray,      // same as rabbitmq, len + bytes
+    BytesArray,      // same as rabbitmq, len + bytes
     Void,           // no field
     Unknown
 }
@@ -363,7 +555,7 @@ impl FieldValueKind {
             FieldValueKind::LongStr => b'S',
             FieldValueKind::FieldArray => b'A',
             FieldValueKind::FieldTable => b'F',
-            FieldValueKind::ByteArray => b'x',
+            FieldValueKind::BytesArray => b'x',
             FieldValueKind::Void => b'V',
             FieldValueKind::Unknown => 0xff
         }
@@ -389,7 +581,7 @@ impl From<u8> for FieldValueKind {
             b'S' => FieldValueKind::LongStr,
             b'A' => FieldValueKind::FieldArray,
             b'F' => FieldValueKind::FieldTable,
-            b'x' => FieldValueKind::ByteArray,
+            b'x' => FieldValueKind::BytesArray,
             b'V' => FieldValueKind::Void,
             _ => FieldValueKind::Unknown
         }
@@ -397,7 +589,7 @@ impl From<u8> for FieldValueKind {
 }
 
 #[derive(Debug)]
-enum FieldValueInner {
+pub enum FieldValue {
     Boolean(bool),
     U8(u8),
     I8(i8),
@@ -418,145 +610,371 @@ enum FieldValueInner {
     Void
 }
 
-#[derive(Debug)]
-pub struct FieldValue {
-    kind: FieldValueKind,
-    value: FieldValueInner
-}
-
 impl FieldValue {
     #[inline]
     pub fn from_bool(value: bool) -> FieldValue {
-        FieldValue { kind: FieldValueKind::Boolean, value: FieldValueInner::Boolean(value) }
+        FieldValue::Boolean(value)
     }
 
     #[inline]
     pub fn from_u8(value: u8) -> FieldValue {
-        FieldValue { kind: FieldValueKind::U8, value: FieldValueInner::U8(value) }
+        FieldValue::U8(value)
     }
 
     #[inline]
     pub fn from_i8(value: i8) -> FieldValue {
-        FieldValue { kind: FieldValueKind::I8, value: FieldValueInner::I8(value) }
+        FieldValue::I8(value)
     }
 
     #[inline]
     pub fn from_i16(value: i16) -> FieldValue {
-        FieldValue { kind: FieldValueKind::I16, value: FieldValueInner::I16(value) }
+        FieldValue::I16(value)
     }
 
     #[inline]
     pub fn from_u16(value: u16) -> FieldValue {
-        FieldValue { kind: FieldValueKind::U16, value: FieldValueInner::U16(value) }
+        FieldValue::U16(value)
     }
 
     #[inline]
     pub fn from_i32(value: i32) -> FieldValue {
-        FieldValue { kind: FieldValueKind::I32, value: FieldValueInner::I32(value)}
+        FieldValue::I32(value)
     }
 
     #[inline]
     pub fn from_u32(value: u32) -> FieldValue {
-        FieldValue { kind: FieldValueKind::U32, value: FieldValueInner::U32(value)}
+        FieldValue::U32(value)
     }
 
     #[inline]
     pub fn from_i64(value: i64) -> FieldValue {
-        FieldValue { kind: FieldValueKind::I64, value: FieldValueInner::I64(value)}
+        FieldValue::I64(value)
     }
 
     #[inline]
     pub fn from_u64(value: u64) -> FieldValue {
-        FieldValue { kind: FieldValueKind::U64, value: FieldValueInner::U64(value)}
+        FieldValue::U64(value)
     }
 
     #[inline]
     pub fn from_f32(value: f32) -> FieldValue {
-        FieldValue { kind: FieldValueKind::F32, value: FieldValueInner::F32(value)}
+        FieldValue::F32(value)
     }
 
     #[inline]
     pub fn from_f64(value: f64) -> FieldValue {
-        FieldValue { kind: FieldValueKind::F64, value: FieldValueInner::F64(value)}
+        FieldValue::F64(value)
     }
 
     #[inline]
     pub fn from_timestamp(value: Timestamp) -> FieldValue {
-        FieldValue { kind: FieldValueKind::Timestamp, value: FieldValueInner::Timestamp(value)}
+        FieldValue::Timestamp(value)
     }
 
     #[inline]
     pub fn from_decimal(value: Decimal) -> FieldValue {
-        FieldValue { kind: FieldValueKind::Decimal, value: FieldValueInner::Decimal(value)}
+        FieldValue::Decimal(value)
     }
 
     #[inline]
     pub fn from_long_string(value: LongStr) -> FieldValue {
-        FieldValue { kind: FieldValueKind::LongStr, value: FieldValueInner::LongStr(value)}
+        FieldValue::LongStr(value)
     }
 
     #[inline]
     pub fn from_field_array(value: Vec<FieldValue>) ->FieldValue {
-        FieldValue { kind: FieldValueKind::FieldArray, value: FieldValueInner::FieldArray(value)}
+        FieldValue::FieldArray(value)
     }
 
     #[inline]
     pub fn from_field_table(value: FieldTable) ->FieldValue {
-        FieldValue { kind: FieldValueKind::FieldTable, value: FieldValueInner::FieldTable(value)}
+        FieldValue::FieldTable(value)
     }
 
     #[inline]
     pub fn from_bytes_array(value: BytesArray) ->FieldValue {
-        FieldValue { kind: FieldValueKind::ByteArray, value: FieldValueInner::BytesArray(value)}
+        FieldValue::BytesArray(value)
     }
 
     #[inline]
     pub fn from_void() ->FieldValue {
-        FieldValue { kind: FieldValueKind::Void, value: FieldValueInner::Void}
+        FieldValue::Void
     }
 
     #[inline]
-    pub fn get_kind(&self) -> &FieldValueKind {
-        &self.kind
+    fn get_value_kind(&self) -> FieldValueKind {
+        match self {
+            FieldValue::Boolean(_) => FieldValueKind::Boolean,
+            FieldValue::U8(_) => FieldValueKind::U8,
+            FieldValue::I8(_) => FieldValueKind::I8,
+            FieldValue::U16(_) => FieldValueKind::U16,
+            FieldValue::I16(_) => FieldValueKind::I16,
+            FieldValue::U32(_) => FieldValueKind::U32,
+            FieldValue::I32(_) => FieldValueKind::I32,
+            FieldValue::U64(_) => FieldValueKind::U64,
+            FieldValue::I64(_) => FieldValueKind::I64,
+            FieldValue::F32(_) => FieldValueKind::F32,
+            FieldValue::F64(_) => FieldValueKind::F64,
+            FieldValue::Timestamp(_) => FieldValueKind::Timestamp,
+            FieldValue::Decimal(_) => FieldValueKind::Decimal,
+            FieldValue::LongStr(_) => FieldValueKind::LongStr,
+            FieldValue::FieldArray(_) => FieldValueKind::FieldArray,
+            FieldValue::FieldTable(_) => FieldValueKind::FieldTable,
+            FieldValue::BytesArray(_) => FieldValueKind::BytesArray,
+            FieldValue::Void => FieldValueKind::Void
+        }
     }
 }
 
 impl Encode for FieldValue {
+    /// Encode value by type.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use amqp_proto::{FieldValue, Decimal, LongStr, FieldArray, FieldTable, FieldName};
+    /// use bytes::{BytesMut, BufMut};
+    /// use amqp_proto::codec::Encode;
+    ///
+    /// let v1 = FieldValue::from_bool(false);
+    /// let mut buffer = BytesMut::with_capacity(128);
+    /// v1.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b't', 0]);
+    ///
+    /// let v2 = FieldValue::from_u8(12u8);
+    /// buffer.clear();
+    /// v2.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'B', 12u8]);
+    ///
+    /// let v3 = FieldValue::from_i8(12i8);
+    /// buffer.clear();
+    /// v3.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'b', 12u8]);
+    ///
+    /// let v4 = FieldValue::from_i16(0x1234i16);
+    /// buffer.clear();
+    /// v4.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b's', 0x12u8, 0x34u8]);
+    ///
+    /// let v5 = FieldValue::from_u16(0x1234u16);
+    /// buffer.clear();
+    /// v5.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'u', 0x12u8, 0x34u8]);
+    ///
+    /// let v6 = FieldValue::from_u32(0x12345678u32);
+    /// buffer.clear();
+    /// v6.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'i', 0x12u8, 0x34u8, 0x56u8, 0x78u8]);
+    ///
+    /// let v7 = FieldValue::from_i32(0x12345678i32);
+    /// buffer.clear();
+    /// v7.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'I', 0x12u8, 0x34u8, 0x56u8, 0x78u8]);
+    ///
+    /// let v8 = FieldValue::from_u64(0x12345678u64);
+    /// buffer.clear();
+    /// v8.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'L', 0u8, 0, 0, 0, 0x12u8, 0x34u8, 0x56u8, 0x78u8]);
+    ///
+    /// let v9 = FieldValue::from_i64(0x12345678i64);
+    /// buffer.clear();
+    /// v9.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'l', 0u8, 0, 0, 0, 0x12u8, 0x34u8, 0x56u8, 0x78u8]);
+    ///
+    /// let v10 = FieldValue::from_f32(123.456f32);
+    /// buffer.clear();
+    /// v10.encode(&mut buffer);
+    /// let mut tmp = BytesMut::with_capacity(64);
+    /// tmp.put_u8(b'f');
+    /// tmp.put_u32(123.456f32.to_bits());
+    /// assert_eq!(&buffer[..], &tmp[..]);
+    ///
+    /// let v11 = FieldValue::from_f64(123.456f64);
+    /// buffer.clear();
+    /// v11.encode(&mut buffer);
+    /// let mut tmp = BytesMut::with_capacity(64);
+    /// tmp.put_u8(b'd');
+    /// tmp.put_u64(123.456f64.to_bits());
+    /// assert_eq!(&buffer[..], &tmp[..]);
+    ///
+    /// let v12 = FieldValue::from_timestamp(0x12345678u64);
+    /// buffer.clear();
+    /// v12.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'T', 0u8, 0, 0, 0, 0x12u8, 0x34u8, 0x56u8, 0x78u8]);
+    ///
+    /// let v13 = FieldValue::from_decimal(Decimal::new(2u8, 0x12345678u32));
+    /// buffer.clear();
+    /// v13.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'D', 0x2u8, 0x12, 0x34, 0x56, 0x78]);
+    ///
+    /// let v14 = FieldValue::from_long_string(LongStr::with_bytes(b"hello").unwrap());
+    /// buffer.clear();
+    /// v14.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'S', 0, 0, 0, 0x5u8, b'h', b'e', b'l', b'l', b'o']);
+    ///
+    /// let mut arr = FieldArray::new();
+    /// arr.push(FieldValue::from_u8(0x1));
+    /// arr.push(FieldValue::from_u8(0x2));
+    /// arr.push(FieldValue::from_u8(0x3));
+    /// let v15 = FieldValue::from_field_array(arr);
+    /// buffer.clear();
+    /// v15.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &[b'A', 0x0u8, 0, 0, 0x6u8, b'B', 0x1, b'B', 0x2, b'B', 0x3]);
+    ///
+    /// let mut table = FieldTable::new();
+    /// table.insert(FieldName::with_bytes(b"hello").unwrap(), FieldValue::from_u32(0x12345678u32));
+    /// table.insert(FieldName::with_bytes(b"world").unwrap(), FieldValue::from_long_string(LongStr::with_bytes(b"hello").unwrap()));
+    /// let mut ret = BytesMut::with_capacity(128);
+    /// ret.put_u8(b'F');
+    /// ret.put_u32(27u32);
+    /// for (k, _) in &table {
+    ///     if *k == FieldName::with_bytes(b"hello").unwrap() {
+    ///         ret.put_u8(5u8);
+    ///         ret.put_slice(b"hello");
+    ///         ret.put_u8(b'i');
+    ///         ret.put_u32(0x12345678u32);
+    ///     } else {
+    ///         ret.put_u8(5u8);
+    ///         ret.put_slice(b"world");
+    ///         ret.put_u8(b'S');
+    ///         ret.put_u32(5u32);
+    ///         ret.put_slice(b"hello");
+    ///     }
+    /// }
+    /// let value = FieldValue::from_field_table(table);
+    /// buffer.clear();
+    /// value.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &ret[..]);
+    ///
+    /// let value = FieldValue::from_bytes_array(LongStr::with_bytes(b"hello").unwrap());
+    /// let mut ret = BytesMut::with_capacity(8);
+    /// ret.put_u8(b'x');
+    /// ret.put_u32(0x5u32);
+    /// ret.put_slice(b"hello");
+    /// buffer.clear();
+    /// value.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], &ret[..]);
+    ///
+    /// let value = FieldValue::from_void();
+    /// let ret = [b'V'];
+    /// buffer.clear();
+    /// value.encode(&mut buffer);
+    /// assert_eq!(&buffer[..], ret)
+    /// ```
     fn encode(&self, buffer: &mut BytesMut) {
-        buffer.put_u8(self.kind.as_u8());
-        match &self.value {
-            FieldValueInner::Boolean(v) => {
+        buffer.put_u8(self.get_value_kind().as_u8());
+        match self {
+            FieldValue::Boolean(v) => {
                 let v: u8 = if *v { 1 } else { 0 };
                 buffer.put_u8(v);
             }
-            FieldValueInner::U8(v) => buffer.put_u8(*v),
-            FieldValueInner::I8(v) => buffer.put_i8(*v),
-            FieldValueInner::U16(v) => buffer.put_u16(*v),
-            FieldValueInner::I16(v) => buffer.put_i16(*v),
-            FieldValueInner::U32(v) => buffer.put_u32(*v),
-            FieldValueInner::I32(v) => buffer.put_i32(*v),
-            FieldValueInner::U64(v) => buffer.put_u64(*v),
-            FieldValueInner::I64(v) => buffer.put_i64(*v),
-            FieldValueInner::F32(v) => buffer.put_f32(*v),
-            FieldValueInner::F64(v) => buffer.put_f64(*v),
-            FieldValueInner::Timestamp(v) => buffer.put_u64(*v),
-            FieldValueInner::Decimal(v) => v.encode(buffer),
-            FieldValueInner::LongStr(v) => v.encode(buffer),
-            FieldValueInner::FieldArray(v) => {
+            FieldValue::U8(v) => buffer.put_u8(*v),
+            FieldValue::I8(v) => buffer.put_i8(*v),
+            FieldValue::U16(v) => buffer.put_u16(*v),
+            FieldValue::I16(v) => buffer.put_i16(*v),
+            FieldValue::U32(v) => buffer.put_u32(*v),
+            FieldValue::I32(v) => buffer.put_i32(*v),
+            FieldValue::U64(v) => buffer.put_u64(*v),
+            FieldValue::I64(v) => buffer.put_i64(*v),
+            FieldValue::F32(v) => buffer.put_f32(*v),
+            FieldValue::F64(v) => buffer.put_f64(*v),
+            FieldValue::Timestamp(v) => buffer.put_u64(*v),
+            FieldValue::Decimal(v) => v.encode(buffer),
+            FieldValue::LongStr(v) => v.encode(buffer),
+            FieldValue::FieldArray(v) => {
                 v.encode(buffer);
             }
-            FieldValueInner::FieldTable(v) => {
+            FieldValue::FieldTable(v) => {
                 v.encode(buffer);
             }
-            FieldValueInner::BytesArray(v) => {
+            FieldValue::BytesArray(v) => {
                 v.encode(buffer);
             }
-            FieldValueInner::Void => {}
+            FieldValue::Void => {}
         }
     }
 }
 
 impl Decode<FieldValue> for FieldValue {
+    /// Decode FieldValue from bytes
+    ///
+    /// # Examples
+    /// ```rust
+    /// use amqp_proto::FieldValue;
+    /// use amqp_proto::Decimal;
+    /// use amqp_proto::LongStr;
+    /// use amqp_proto::codec::Decode;
+    /// use bytes::{BytesMut, BufMut};
+    ///
+    /// let b1 = [b't', 0u8];
+    /// let (_, v1) = FieldValue::decode(&b1).unwrap();
+    /// assert!(matches!(v1, FieldValue::Boolean(v) if !v));
+    ///
+    /// let b2 = [b'B', 0x1u8];
+    /// let (_, v2) = FieldValue::decode(&b2).unwrap();
+    /// assert!(matches!(v2, FieldValue::U8(v) if v == 0x1u8));
+    ///
+    /// let b3 = [b'b', 0x1u8];
+    /// let (_, v3) = FieldValue::decode(&b3).unwrap();
+    /// assert!(matches!(v3, FieldValue::I8(v) if v == 0x1i8));
+    ///
+    /// let b4 = [b's', 0x12u8, 0x34u8];
+    /// let (_, v4) = FieldValue::decode(&b4).unwrap();
+    /// assert!(matches!(v4, FieldValue::I16(v) if v == 0x1234i16));
+    ///
+    /// let b5 = [b'u', 0x12u8, 0x34u8];
+    /// let (_, v5) = FieldValue::decode(&b5).unwrap();
+    /// assert!(matches!(v5, FieldValue::U16(v) if v == 0x1234u16));
+    ///
+    /// let b6 = [b'I', 0x12u8, 0x34u8, 0x56u8, 0x78u8];
+    /// let (_, v6) = FieldValue::decode(&b6).unwrap();
+    /// assert!(matches!(v6, FieldValue::I32(v) if v == 0x12345678i32));
+    ///
+    /// let b7 = [b'i', 0x12u8, 0x34u8, 0x56u8, 0x78u8];
+    /// let (_, v7) = FieldValue::decode(&b7).unwrap();
+    /// assert!(matches!(v7, FieldValue::U32(v) if v == 0x12345678u32));
+    ///
+    /// let b8 = [b'l', 0x0u8, 0, 0, 0, 0x12u8, 0x34u8, 0x56u8, 0x78u8];
+    /// let (_, v8) = FieldValue::decode(&b8).unwrap();
+    /// assert!(matches!(v8, FieldValue::I64(v) if v == 0x12345678i64));
+    ///
+    /// let b9 = [b'L',  0x0u8, 0, 0, 0, 0x12u8, 0x34u8, 0x56u8, 0x78u8];
+    /// let (_, v9) = FieldValue::decode(&b9).unwrap();
+    /// assert!(matches!(v9, FieldValue::U64(v) if v == 0x12345678u64));
+    ///
+    /// let b10 = [b'T',  0x0u8, 0, 0, 0, 0x12u8, 0x34u8, 0x56u8, 0x78u8];
+    /// let (_, v10) = FieldValue::decode(&b10).unwrap();
+    /// assert!(matches!(v10, FieldValue::Timestamp(v) if v == 0x12345678u64));
+    ///
+    /// let mut b11 = BytesMut::with_capacity(64);
+    /// b11.put_u8(b'f');
+    /// b11.put_u32(123.456f32.to_bits());
+    /// let (_, v11) = FieldValue::decode(&b11).unwrap();
+    /// assert!(matches!(v11, FieldValue::F32(v) if v.to_bits() == 123.456f32.to_bits()));
+    ///
+    /// let mut b12 = BytesMut::with_capacity(64);
+    /// b12.put_u8(b'd');
+    /// b12.put_u64(123.456f64.to_bits());
+    /// let (_, v12) = FieldValue::decode(&b12).unwrap();
+    /// assert!(matches!(v12, FieldValue::F64(v) if v.to_bits() == 123.456f64.to_bits()));
+    ///
+    /// let b13 = [b'D', 0x2, 0, 0, 0, 0x12];
+    /// let (_, v13) = FieldValue::decode(&b13).unwrap();
+    /// assert!(matches!(v13, FieldValue::Decimal(v) if v == Decimal::new(2, 0x12u32)));
+    ///
+    /// let b14 = [b'S', 0, 0, 0, 5u8, b'h', b'e', b'l', b'l', b'o'];
+    /// let (_, v14) = FieldValue::decode(&b14).unwrap();
+    /// assert!(matches!(v14, FieldValue::LongStr(v) if v.to_string() == String::from("hello")));
+    ///
+    /// let (_, arr) = FieldValue::decode(&[b'A', 0x0u8, 0, 0, 14u8, b'B', 0x1, b'B', 0x2, b'S', 0, 0, 0, 5u8, 104, 101, 108, 108, 111]).unwrap();
+    /// match arr {
+    ///     FieldValue::FieldArray(arr) => {
+    ///         assert!(matches!(arr[0], FieldValue::U8(v) if v == 0x1u8));
+    ///         assert!(matches!(arr[1], FieldValue::U8(v) if v == 0x2u8));
+    ///         assert!(matches!(arr[2], FieldValue::LongStr(ref v) if v.to_string() == String::from("hello")));
+    ///     },
+    ///     _ => panic!("Should be FieldArray")
+    /// }
+    /// ```
     fn decode(buffer: &[u8]) -> Result<(&[u8], FieldValue), FrameDecodeErr> {
         let (buffer, value_type) = match u8::decode(buffer) {
             Ok(v) => v,
@@ -589,7 +1007,7 @@ impl Decode<FieldValue> for FieldValue {
             FieldValueKind::Decimal => Decimal::decode(buffer).map_err(|e| FrameDecodeErr::DecodeError(format!("decode FieldValue decimal -> {}", e))).map(|(buffer, v)|(buffer, FieldValue::from_decimal(v))),
             FieldValueKind::LongStr => LongStr::decode(buffer).map_err(|e| FrameDecodeErr::DecodeError(format!("decode FieldValue long string -> {}", e))).map(|(buffer, v)|(buffer, FieldValue::from_long_string(v))),
             FieldValueKind::FieldArray => FieldArray::decode(buffer).map_err(|e| FrameDecodeErr::DecodeError(format!("decode FieldValue FieldArray -> {}", e))).map(|(buffer, v)|(buffer, FieldValue::from_field_array(v))),
-            FieldValueKind::ByteArray => ByteArray::decode(buffer).map_err(|e| FrameDecodeErr::DecodeError(format!("decode FieldValue ByteArray -> {}", e))).map(|(buffer, v)|(buffer, FieldValue::from_bytes_array(v))),
+            FieldValueKind::BytesArray => ByteArray::decode(buffer).map_err(|e| FrameDecodeErr::DecodeError(format!("decode FieldValue ByteArray -> {}", e))).map(|(buffer, v)|(buffer, FieldValue::from_bytes_array(v))),
             FieldValueKind::FieldTable => FieldTable::decode(buffer).map_err(|e| FrameDecodeErr::DecodeError(format!("decode FieldValue FieldTable -> {}", e))).map(|(buffer, v)|(buffer, FieldValue::from_field_table(v))),
             FieldValueKind::Void => Ok((buffer, FieldValue::from_void())),
             FieldValueKind::Unknown => return Err(FrameDecodeErr::DecodeError(format!("decode FieldValue failed, unknown field value kind")))
