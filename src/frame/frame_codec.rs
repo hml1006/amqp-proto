@@ -50,7 +50,7 @@ impl Decoder for FrameCodec {
         // +----------------+---------------------+---------------------+--------------+-------------+
         match Frame::decode(&src[..]) {
             Ok((_, frame)) => {
-                let _ = src.split_to(frame.len());
+                let _ = src.split_to(frame.decoded_frame_len());
                 Ok(Some(AmqpFrame(frame)))
             }
             Err(e) => {

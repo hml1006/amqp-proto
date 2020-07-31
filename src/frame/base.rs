@@ -1747,8 +1747,7 @@ impl Encode for Payload {
 }
 
 // frame
-#[derive(Property, Default)]
-#[property(get(public))]
+#[derive(Default)]
 pub struct Frame {
     frame_type: FrameType,
     channel: u16,
@@ -1757,10 +1756,96 @@ pub struct Frame {
 }
 
 impl Frame {
-    /// The whole frame bytes length
+    // Heartbeat frame is const
+    const HEARTBEAT_FRAME_BYTES: [u8; 8] = [8u8, 0, 0, 0, 0, 0, 0, FRAME_END];
+
+    /// The whole frame bytes length, should first decode the frame
     #[inline]
-    pub fn len(&self) -> usize {
+    pub fn decoded_frame_len(&self) -> usize {
         (self.length + 8u32) as usize
+    }
+
+
+    /// Return const static heartbeat frame bytes
+    #[inline]
+    pub fn heartbeat_frame_bytes() ->&'static [u8] {
+        &Frame::HEARTBEAT_FRAME_BYTES
+    }
+
+    pub fn method_frame(channel: u16, args: Arguments) -> Self {
+        let (class, method) = match &args {
+            Arguments::ConnectionStart(_) => (Class::Connection, Method::Connection(ConnectionMethod::Start)),
+            Arguments::ConnectionStartOk(_) => (Class::Connection, Method::Connection(ConnectionMethod::StartOk)),
+            Arguments::ConnectionSecure(_) => (Class::Connection, Method::Connection(ConnectionMethod::Secure)),
+            Arguments::ConnectionSecureOk(_) => (Class::Connection, Method::Connection(ConnectionMethod::SecureOk)),
+            Arguments::ConnectionTune(_) => (Class::Connection, Method::Connection(ConnectionMethod::Tune)),
+            Arguments::ConnectionTuneOk(_) => (Class::Connection, Method::Connection(ConnectionMethod::TuneOk)),
+            Arguments::ConnectionOpen(_) => (Class::Connection, Method::Connection(ConnectionMethod::Open)),
+            Arguments::ConnectionOpenOk(_) => (Class::Connection, Method::Connection(ConnectionMethod::OpenOk)),
+            Arguments::ConnectionClose(_) => (Class::Connection, Method::Connection(ConnectionMethod::Close)),
+            Arguments::ConnectionCloseOk(_) => (Class::Connection, Method::Connection(ConnectionMethod::CloseOk)),
+
+            Arguments::ChannelOpen(_) => (Class::Channel, Method::Channel(ChannelMethod::Open)),
+            Arguments::ChannelOpenOk(_) => (Class::Channel, Method::Channel(ChannelMethod::OpenOk)),
+            Arguments::ChannelFlow(_) => (Class::Channel, Method::Channel(ChannelMethod::Flow)),
+            Arguments::ChannelFlowOk(_) => (Class::Channel, Method::Channel(ChannelMethod::FlowOk)),
+            Arguments::ChannelClose(_) => (Class::Channel, Method::Channel(ChannelMethod::Close)),
+            Arguments::ChannelCloseOk(_) => (Class::Channel, Method::Channel(ChannelMethod::CloseOk)),
+
+            Arguments::AccessRequest(_) => (Class::Access, Method::Access(AccessMethod::Request)),
+            Arguments::AccessRequestOk(_) => (Class::Access, Method::Access(AccessMethod::RequestOk)),
+
+            Arguments::ExchangeDeclare(_) => (Class::Exchange, Method::Exchange(ExchangeMethod::Declare)),
+            Arguments::ExchangeDeclareOk(_) => (Class::Exchange, Method::Exchange(ExchangeMethod::DeclareOk)),
+            Arguments::ExchangeDelete(_) => (Class::Exchange, Method::Exchange(ExchangeMethod::Delete)),
+            Arguments::ExchangeDeleteOk(_) => (Class::Exchange, Method::Exchange(ExchangeMethod::DeleteOk)),
+            Arguments::ExchangeBind(_) => (Class::Exchange, Method::Exchange(ExchangeMethod::Bind)),
+            Arguments::ExchangeBindOk(_) => (Class::Exchange, Method::Exchange(ExchangeMethod::BindOk)),
+            Arguments::ExchangeUnbind(_) => (Class::Exchange, Method::Exchange(ExchangeMethod::Unbind)),
+            Arguments::ExchangeUnbindOk(_) => (Class::Exchange, Method::Exchange(ExchangeMethod::UnbindOk)),
+
+            Arguments::QueueDeclare(_) => (Class::Queue, Method::Queue(QueueMethod::Declare)),
+            Arguments::QueueDeclareOk(_) => (Class::Queue, Method::Queue(QueueMethod::DeclareOk)),
+            Arguments::QueueBind(_) => (Class::Queue, Method::Queue(QueueMethod::Bind)),
+            Arguments::QueueBindOk(_) => (Class::Queue, Method::Queue(QueueMethod::BindOk)),
+            Arguments::QueueUnbind(_) => (Class::Queue, Method::Queue(QueueMethod::Unbind)),
+            Arguments::QueueUnbindOk(_) => (Class::Queue, Method::Queue(QueueMethod::UnbindOk)),
+            Arguments::QueuePurge(_) => (Class::Queue, Method::Queue(QueueMethod::Purge)),
+            Arguments::QueuePurgeOk(_) => (Class::Queue, Method::Queue(QueueMethod::PurgeOk)),
+            Arguments::QueueDelete(_) => (Class::Queue, Method::Queue(QueueMethod::Delete)),
+            Arguments::QueueDeleteOk(_) => (Class::Queue, Method::Queue(QueueMethod::DeleteOk)),
+
+            Arguments::BasicQos(_) => (Class::Basic, Method::Basic(BasicMethod::Qos)),
+            Arguments::BasicQosOk(_) => (Class::Basic, Method::Basic(BasicMethod::QosOk)),
+            Arguments::BasicConsume(_) => (Class::Basic, Method::Basic(BasicMethod::Consume)),
+            Arguments::BasicConsumeOk(_) => (Class::Basic, Method::Basic(BasicMethod::ConsumeOk)),
+            Arguments::BasicCancel(_) => (Class::Basic, Method::Basic(BasicMethod::Cancel)),
+            Arguments::BasicCancelOk(_) => (Class::Basic, Method::Basic(BasicMethod::CancelOk)),
+            Arguments::BasicPublish(_) => (Class::Basic, Method::Basic(BasicMethod::Publish)),
+            Arguments::BasicDeliver(_) => (Class::Basic, Method::Basic(BasicMethod::Deliver)),
+            Arguments::BasicReturn(_) => (Class::Basic, Method::Basic(BasicMethod::Return)),
+            Arguments::BasicGet(_) => (Class::Basic, Method::Basic(BasicMethod::Get)),
+            Arguments::BasicGetOk(_) => (Class::Basic, Method::Basic(BasicMethod::GetOk)),
+            Arguments::BasicGetEmpty(_) => (Class::Basic, Method::Basic(BasicMethod::GetEmpty)),
+            Arguments::BasicAck(_) => (Class::Basic, Method::Basic(BasicMethod::Ack)),
+            Arguments::BasicReject(_) => (Class::Basic, Method::Basic(BasicMethod::Reject)),
+            Arguments::BasicRecoverAsync(_) => (Class::Basic, Method::Basic(BasicMethod::RecoverAsync)),
+            Arguments::BasicRecover(_) => (Class::Basic, Method::Basic(BasicMethod::Recover)),
+            Arguments::BasicRecoverOk(_) => (Class::Basic, Method::Basic(BasicMethod::RecoverOk)),
+            Arguments::BasicNack(_) => (Class::Basic, Method::Basic(BasicMethod::Nack)),
+
+            Arguments::TxSelect(_) => (Class::Tx, Method::Tx(TxMethod::Select)),
+            Arguments::TxSelectOk(_) => (Class::Tx, Method::Tx(TxMethod::SelectOk)),
+            Arguments::TxCommit(_) => (Class::Tx, Method::Tx(TxMethod::Commit)),
+            Arguments::TxCommitOk(_) => (Class::Tx, Method::Tx(TxMethod::CommitOk)),
+            Arguments::TxRollback(_) => (Class::Tx, Method::Tx(TxMethod::Rollback)),
+            Arguments::TxRollbackOk(_) => (Class::Tx, Method::Tx(TxMethod::RollbackOk)),
+
+            Arguments::ConfirmSelect(_) => (Class::Confirm, Method::Confirm(ConfirmMethod::Select)),
+            Arguments::ConfirmSelectOk(_) => (Class::Confirm, Method::Confirm(ConfirmMethod::SelectOk))
+        };
+        let payload = MethodPayload { class, method, args };
+        Frame { frame_type: FrameType::METHOD, channel: channel, length: 0u32, payload: Payload::Method(payload) }
     }
 }
 
@@ -1769,8 +1854,22 @@ impl Encode for Frame {
     fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(self.frame_type.frame_type_id());
         buffer.put_u16(self.channel);
-        buffer.put_u32(self.length);
+
+        // save old length
+        let old_len = buffer.len();
+
+        // placeholer
+        buffer.put_u32(0);
         self.payload.encode(buffer);
+
+        // reset payload length
+        let payload_len = buffer.len() as u32 - old_len as u32 - std::mem::size_of::<u32>() as u32;
+        let payload_len_bytes = payload_len.to_be_bytes();
+        for i in 0..std::mem::size_of::<u32>() {
+            buffer[old_len + i] = payload_len_bytes[i];
+        }
+
+        // append frame end byte
         buffer.put_u8(FRAME_END);
     }
 }
