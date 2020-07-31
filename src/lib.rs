@@ -52,11 +52,10 @@ pub mod err {
 
 #[cfg(test)]
 mod tests {
-    use crate::{LongStr, Decimal, FieldValue, FieldTable, FieldName, FieldArray};
+    use crate::{LongStr, FieldValue, FieldTable, FieldName};
     use crate::frame::method::connection::ConnectionStart;
-    use crate::codec::{Encode, Decode};
+    use crate::codec::{Decode};
     use bytes::{BytesMut, BufMut};
-    use std::borrow::BorrowMut;
 
     #[test]
     fn test_connection_start() {
@@ -67,4 +66,33 @@ mod tests {
         assert_eq!(connection_start.version_major(), 0);
     }
 
+    #[test]
+    fn test_field_table() {
+        let mut table = FieldTable::new();
+        table.insert(FieldName::with_bytes(b"hello").unwrap(), FieldValue::from_u32(0x12345678u32));
+        table.insert(FieldName::with_bytes(b"world").unwrap(), FieldValue::from_long_string(LongStr::with_bytes(b"hello").unwrap()));
+        let mut ret = BytesMut::with_capacity(128);
+        ret.put_u8(b'F');
+        ret.put_u32(27u32);
+        for (k, _) in &table {
+            if *k == FieldName::with_bytes(b"hello").unwrap() {
+                ret.put_u8(5u8);
+                ret.put_slice(b"hello");
+                ret.put_u8(b'i');
+                ret.put_u32(0x12345678u32);
+            } else {
+                ret.put_u8(5u8);
+                ret.put_slice(b"world");
+                ret.put_u8(b'S');
+                ret.put_u32(5u32);
+                ret.put_slice(b"hello");
+            }
+        }
+        if let (_, FieldValue::FieldTable(t)) = FieldValue::decode(&ret).unwrap() {
+            assert!(matches!(t.get(&FieldName::with_bytes(b"hello").unwrap()).unwrap(), FieldValue::U32(v) if *v == 0x12345678u32));
+            assert!(matches!(t.get(&FieldName::with_bytes(b"world").unwrap()).unwrap(), FieldValue::LongStr(v) if v.to_string() == String::from("hello")));
+        } else {
+            panic!("Expected FieldTable value");
+        }
+    }
 }

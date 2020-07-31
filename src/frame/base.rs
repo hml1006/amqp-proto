@@ -899,7 +899,7 @@ impl Decode<FieldValue> for FieldValue {
     ///
     /// # Examples
     /// ```rust
-    /// use amqp_proto::FieldValue;
+    /// use amqp_proto::{FieldValue, FieldName, FieldTable};
     /// use amqp_proto::Decimal;
     /// use amqp_proto::LongStr;
     /// use amqp_proto::codec::Decode;
@@ -971,9 +971,42 @@ impl Decode<FieldValue> for FieldValue {
     ///         assert!(matches!(arr[0], FieldValue::U8(v) if v == 0x1u8));
     ///         assert!(matches!(arr[1], FieldValue::U8(v) if v == 0x2u8));
     ///         assert!(matches!(arr[2], FieldValue::LongStr(ref v) if v.to_string() == String::from("hello")));
-    ///     },
+    ///     }
     ///     _ => panic!("Should be FieldArray")
     /// }
+    ///
+    /// let (_, arr) = FieldValue::decode(&[b'x', 0, 0, 0, 5u8, 104, 101, 108, 108, 111]).unwrap();
+    /// assert!(matches!(arr, FieldValue::BytesArray(v) if v.to_string() == String::from("hello")));
+    ///
+    /// let mut table = FieldTable::new();
+    /// table.insert(FieldName::with_bytes(b"hello").unwrap(), FieldValue::from_u32(0x12345678u32));
+    /// table.insert(FieldName::with_bytes(b"world").unwrap(), FieldValue::from_long_string(LongStr::with_bytes(b"hello").unwrap()));
+    /// let mut ret = BytesMut::with_capacity(128);
+    /// ret.put_u8(b'F');
+    /// ret.put_u32(27u32);
+    /// for (k, _) in &table {
+    ///     if *k == FieldName::with_bytes(b"hello").unwrap() {
+    ///         ret.put_u8(5u8);
+    ///         ret.put_slice(b"hello");
+    ///         ret.put_u8(b'i');
+    ///         ret.put_u32(0x12345678u32);
+    ///     } else {
+    ///         ret.put_u8(5u8);
+    ///         ret.put_slice(b"world");
+    ///         ret.put_u8(b'S');
+    ///         ret.put_u32(5u32);
+    ///         ret.put_slice(b"hello");
+    ///     }
+    /// }
+    /// if let (_, FieldValue::FieldTable(t)) = FieldValue::decode(&ret).unwrap() {
+    ///     assert!(matches!(t.get(&FieldName::with_bytes(b"hello").unwrap()).unwrap(), FieldValue::U32(v) if *v == 0x12345678u32));
+    ///     assert!(matches!(t.get(&FieldName::with_bytes(b"world").unwrap()).unwrap(), FieldValue::LongStr(v) if v.to_string() == String::from("hello")));
+    /// } else {
+    ///     panic!("Expected FieldTable value");
+    /// }
+    ///
+    /// let (_, v) = FieldValue::decode(&[b'V']).unwrap();
+    /// assert!(matches!(v, FieldValue::Void));
     /// ```
     fn decode(buffer: &[u8]) -> Result<(&[u8], FieldValue), FrameDecodeErr> {
         let (buffer, value_type) = match u8::decode(buffer) {
@@ -1018,6 +1051,39 @@ impl Decode<FieldValue> for FieldValue {
 pub type FieldTable = HashMap<FieldName, FieldValue>;
 
 impl Encode for FieldTable {
+    /// Encode FieldTable to BytesMut
+    ///
+    /// # Examples
+    /// ```rust
+    /// use amqp_proto::{FieldTable, FieldName, FieldValue, LongStr};
+    /// use bytes::{BytesMut, BufMut};
+    /// use amqp_proto::codec::Encode;
+    ///
+    /// let mut table = FieldTable::new();
+    /// table.insert(FieldName::with_bytes(b"hello").unwrap(), FieldValue::from_u32(0x12345678u32));
+    /// table.insert(FieldName::with_bytes(b"world").unwrap(), FieldValue::from_long_string(LongStr::with_bytes(b"hello").unwrap()));
+    /// let mut buffer = BytesMut::with_capacity(64);
+    /// table.encode(&mut buffer);
+    ///
+    /// let mut ret = BytesMut::with_capacity(128);
+    /// ret.put_u32(27u32);
+    /// for (k, _) in &table {
+    ///     if *k == FieldName::with_bytes(b"hello").unwrap() {
+    ///         ret.put_u8(5u8);
+    ///         ret.put_slice(b"hello");
+    ///         ret.put_u8(b'i');
+    ///         ret.put_u32(0x12345678u32);
+    ///     } else {
+    ///         ret.put_u8(5u8);
+    ///         ret.put_slice(b"world");
+    ///         ret.put_u8(b'S');
+    ///         ret.put_u32(5u32);
+    ///         ret.put_slice(b"hello");
+    ///     }
+    /// }
+    /// assert_eq!(&buffer[..], &ret[..]);
+    /// ```
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         let mut index = buffer.len();
         buffer.put_u32(0);
@@ -1035,6 +1101,36 @@ impl Encode for FieldTable {
 }
 
 impl Decode<FieldTable> for FieldTable {
+    /// Decode FieldTable from bytes
+    ///
+    /// # Examples
+    /// ```rust
+    /// use amqp_proto::{FieldTable, FieldName, FieldValue, LongStr};
+    /// use bytes::{BytesMut, BufMut};
+    /// use amqp_proto::codec::Decode;
+    /// let mut table = FieldTable::new();
+    /// table.insert(FieldName::with_bytes(b"hello").unwrap(), FieldValue::from_u32(0x12345678u32));
+    /// table.insert(FieldName::with_bytes(b"world").unwrap(), FieldValue::from_long_string(LongStr::with_bytes(b"hello").unwrap()));
+    /// let mut ret = BytesMut::with_capacity(128);
+    /// ret.put_u32(27u32);
+    /// for (k, _) in &table {
+    ///     if *k == FieldName::with_bytes(b"hello").unwrap() {
+    ///         ret.put_u8(5u8);
+    ///         ret.put_slice(b"hello");
+    ///         ret.put_u8(b'i');
+    ///         ret.put_u32(0x12345678u32);
+    ///     } else {
+    ///         ret.put_u8(5u8);
+    ///         ret.put_slice(b"world");
+    ///         ret.put_u8(b'S');
+    ///         ret.put_u32(5u32);
+    ///         ret.put_slice(b"hello");
+    ///     }
+    /// }
+    /// let (_, t) = FieldTable::decode(&ret).unwrap();
+    /// assert!(matches!(t.get(&FieldName::with_bytes(b"hello").unwrap()).unwrap(), FieldValue::U32(v) if *v == 0x12345678u32));
+    /// assert!(matches!(t.get(&FieldName::with_bytes(b"world").unwrap()).unwrap(), FieldValue::LongStr(v) if v.to_string() == String::from("hello")));
+    /// ```
     fn decode(buffer: &[u8]) -> Result<(&[u8], FieldTable), FrameDecodeErr> {
         let (buffer, length) = match u32::decode(buffer) {
             Ok(ret) => ret,
@@ -1046,18 +1142,19 @@ impl Decode<FieldTable> for FieldTable {
         };
 
         let mut table = FieldTable::new();
-
+        let mut tmp = data;
         loop {
-            let (data, name) = match FieldName::decode(data) {
+            let (retain, name) = match FieldName::decode(tmp) {
                 Ok(ret) => ret,
                 Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode FieldTable FieldName failed: {}", e)))
             };
-            let (data, value) = match FieldValue::decode(data) {
+            let (retain, value) = match FieldValue::decode(retain) {
                 Ok(ret) => ret,
                 Err(e) => return Err(FrameDecodeErr::DecodeError(format!("decode FieldTable FieldValue failed: {}", e)))
             };
+            tmp = retain;
             table.insert(name, value);
-            if data.len() == 0 {
+            if tmp.len() == 0 {
                 return Ok((buffer, table))
             }
         }
@@ -1067,10 +1164,10 @@ impl Decode<FieldTable> for FieldTable {
 
 
 
-// frame end octet, every frame should end with 0xce
+/// frame end octet, every frame should be end with 0xce
 pub const FRAME_END: u8 = 0xce;
 
-// frame type
+/// frame type, amqp protocol contains METHOD, HEARTBEAT, HEADER, CONTENT BODY frame
 pub enum FrameType {
     METHOD,
     HEADER,
@@ -1080,6 +1177,7 @@ pub enum FrameType {
 }
 
 impl FrameType {
+    #[inline]
     pub fn frame_type_id(&self) -> u8 {
         match self {
             FrameType::METHOD => 1,
@@ -1092,12 +1190,14 @@ impl FrameType {
 }
 
 impl Default for FrameType {
+    #[inline]
     fn default() -> Self {
         FrameType::METHOD
     }
 }
 
 impl From<u8> for FrameType {
+    #[inline]
     fn from(type_id: u8) -> Self {
         match type_id {
             1 => FrameType::METHOD,
@@ -1109,6 +1209,7 @@ impl From<u8> for FrameType {
     }
 }
 
+/// While tcp connection is established, the client should send protocol header to server
 #[derive(Property)]
 #[property(get(public), set(public))]
 pub struct ProtocolHeader {
@@ -1119,7 +1220,33 @@ pub struct ProtocolHeader {
     minor_version: u8
 }
 
+impl Default for ProtocolHeader {
+    fn default() -> Self {
+        ProtocolHeader {
+            protocol: Vec::from("AMQP"),
+            major_id: 0,
+            minor_id: 0,
+            major_version: 9,
+            minor_version: 1
+        }
+    }
+}
+
 impl Encode for ProtocolHeader {
+    /// Encode ProtocolHeader to BytesMut
+    ///
+    /// # Examples
+    /// ```rust
+    /// use amqp_proto::codec::{ProtocolHeader, Encode};
+    /// use bytes::BytesMut;
+    ///
+    /// let protocol_header = ProtocolHeader::default();
+    /// let buf = [0x41u8, 0x4d, 0x51, 0x50, 0, 0, 9, 1];
+    /// let mut buffer = BytesMut::with_capacity(16);
+    /// protocol_header.encode(&mut buffer);
+    /// assert_eq!(&buf[..], &buffer[..]);
+    /// ```
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         buffer.extend_from_slice(&self.protocol);
         buffer.put_u8(self.major_id);
@@ -1130,6 +1257,20 @@ impl Encode for ProtocolHeader {
 }
 
 impl Decode<ProtocolHeader> for ProtocolHeader {
+    /// Decode ProtocolHeader from bytes
+    ///
+    /// # Examples
+    /// ```rust
+    /// use amqp_proto::codec::{ProtocolHeader, Decode};
+    ///
+    /// let buf = [0x41u8, 0x4d, 0x51, 0x50, 0, 0, 9, 1];
+    /// let (_, header) = ProtocolHeader::decode(&buf).unwrap();
+    /// assert_eq!(&header.protocol(), b"AMQP");
+    /// assert_eq!(header.major_id(), 0u8);
+    /// assert_eq!(header.minor_id(), 0u8);
+    /// assert_eq!(header.major_version(), 9u8);
+    /// assert_eq!(header.minor_version(), 1u8);
+    /// ```
     fn decode(buffer: &[u8]) -> Result<(&[u8], ProtocolHeader), FrameDecodeErr> {
         let (buffer, protocol) = match take_bytes(buffer, b"AMQP".len()) {
             Ok((buffer, protocol)) => {
@@ -1159,18 +1300,7 @@ impl Decode<ProtocolHeader> for ProtocolHeader {
     }
 }
 
-impl Default for ProtocolHeader {
-    fn default() -> Self {
-        ProtocolHeader {
-            protocol: Vec::from("AMQP"),
-            major_id: 0,
-            minor_id: 0,
-            major_version: 9,
-            minor_version: 1
-        }
-    }
-}
-
+/// This is Content Header Frame  properties
 pub enum Property {
     Connection(ConnectionProperties),
     Channel(ChannelProperties),
@@ -1183,6 +1313,7 @@ pub enum Property {
 }
 
 impl Default for Property {
+    #[inline]
     fn default() -> Self {
         Property::Connection(ConnectionProperties::default())
     }
@@ -1352,6 +1483,7 @@ impl Encode for Arguments {
 }
 
 impl Default for Arguments {
+    #[inline]
     fn default() -> Self {
         Arguments::ConnectionClose(ConnectionClose::default())
     }
@@ -1366,6 +1498,7 @@ pub struct MethodPayload {
 }
 
 impl Encode for MethodPayload {
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.class.class_id());
         buffer.put_u16(self.method.method_id());
@@ -1524,6 +1657,7 @@ pub struct ContentHeaderPayload {
 }
 
 impl Encode for ContentHeaderPayload {
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u16(self.class.class_id());
         buffer.put_u16(self.weight);
@@ -1580,6 +1714,7 @@ impl Encode for HeartbeatPayload {
 }
 
 impl Decode<HeartbeatPayload> for HeartbeatPayload {
+    #[inline]
     fn decode(buffer: &[u8]) -> Result<(&[u8], HeartbeatPayload), FrameDecodeErr>{
         Ok((buffer, HeartbeatPayload))
     }
@@ -1593,12 +1728,14 @@ pub enum Payload {
 }
 
 impl Default for Payload {
+    #[inline]
     fn default() -> Self {
         Payload::Method(MethodPayload::default())
     }
 }
 
 impl Encode for Payload {
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         match self {
             Payload::Heartbeat(heartbeat) => heartbeat.encode(buffer),
@@ -1620,12 +1757,15 @@ pub struct Frame {
 }
 
 impl Frame {
+    /// The whole frame bytes length
+    #[inline]
     pub fn len(&self) -> usize {
         (self.length + 8u32) as usize
     }
 }
 
 impl Encode for Frame {
+    #[inline]
     fn encode(&self, buffer: &mut BytesMut) {
         buffer.put_u8(self.frame_type.frame_type_id());
         buffer.put_u16(self.channel);
