@@ -1,6 +1,8 @@
 # amqp-proto
 ## This is a library which defined amqp types and also can encode and decode these types with bytes.
 
+parser in other library
+
 The field value types are same as qpid/rabbitmq, some types conflicts with amqp-0-9-1
 ```rust
   
